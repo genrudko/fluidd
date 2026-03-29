@@ -5,7 +5,7 @@ Fluidd is a Vue 2.7 + TypeScript web interface for Klipper 3D printers that comm
 ## Architecture Overview
 
 - **Vue 2.7 + Vuetify 2**: UI framework with Material Design components
-- **Vuex Store**: 30 namespaced modules mirroring Klipper/Moonraker domains (`printer/`, `files/`, `console/`, `macros/`, `webcams/`, `mmu/`, `spoolman/`, etc.)
+- **Vuex Store**: 28 namespaced modules mirroring Klipper/Moonraker domains (`printer/`, `files/`, `console/`, `macros/`, `webcams/`, `mmu/`, `spoolman/`, etc.)
 - **WebSocket Communication**: Real-time JSON-RPC via custom `WebSocketClient` in `src/plugins/socketClient.ts`
 - **Component Structure**: Class-style components with `vue-property-decorator`; mixins-based architecture with `StateMixin` providing common printer state access
 
@@ -49,7 +49,7 @@ export default class PrinterWidget extends Mixins(StateMixin) {
 - All printer communication through `SocketActions` in `src/api/socketActions.ts` (not direct HTTP)
 - Pattern: `baseEmit<T>(method, { dispatch, wait, params })`
 - Use `wait` parameter for UI loading states: `wait: Waits.onPrintStart`
-- Wait constants defined in `src/globals.ts` (`Waits` object, 80+ operation types)
+- Wait constants defined in `src/globals.ts` (`Waits` object, ~90 operation types)
 - Real-time updates handled via store mutations from socket events
 - Auto-reconnect with configurable interval (`Globals.SOCKET_RETRY_DELAY`)
 
@@ -58,12 +58,13 @@ export default class PrinterWidget extends Mixins(StateMixin) {
 - **Auto-imported** (no manual import needed): components in `src/components/common/`, `layout/`, `ui/` — via `unplugin-vue-components` with `VuetifyResolver`
 - **Manual import** required: widget components, view components
 - **Lazy-loaded**: `EChart` via `Vue.component('EChart', () => import('./vue-echarts-chunk'))`
-- Generated types: `components.d.ts` at repo root
+- Generated types: `components.d.ts` at repo root — **auto-generated, do not edit manually**
 
 ## Development Workflow
 
 ### Build Toolchain
 
+- **Node.js 24** — pinned in `.node-version` (engines: `^22.12.0 || ^24`)
 - **Vite 8** — build tool and dev server
 - **`@pedrolamas/plugin-vue2`** — Vue 2 SFC support for Vite
 - **`unplugin-vue-components/rolldown`** — auto-imports components from `src/components/common|layout|ui`
@@ -73,6 +74,7 @@ export default class PrinterWidget extends Mixins(StateMixin) {
 - **ESLint flat config** (`eslint.config.mjs`) — enforced at dev time via `vite-plugin-checker` with `useFlatConfig: true`
 - **`vite-plugin-checker`** — runs vue-tsc and ESLint during dev (disabled at build time)
 - **`skott`** — circular dependency detection (`npm run circular-check`)
+- **ES2020 lib target** (`tsconfig.app.json`) — no ES2021+ built-ins without polyfills
 
 ### Essential Commands
 
@@ -96,15 +98,15 @@ src/
 │   ├── layout/         # App shell: AppBar, AppDrawer, etc. (auto-imported)
 │   ├── settings/       # Settings page components
 │   ├── ui/             # Reusable: AppBtn, AppDialog, AppChart (auto-imported)
-│   └── widgets/        # Feature widgets: camera/, filesystem/, macros/, mmu/, etc.
+│   └── widgets/        # 27 feature widget dirs: bedmesh/, camera/, console/, filesystem/, macros/, mmu/, thermals/, toolhead/, etc.
 ├── directives/         # Custom Vue directives (v-safe-html for DOMPurify)
-├── locales/            # i18n YAML files (24 languages)
+├── locales/            # i18n YAML files (23 languages)
 ├── mixins/             # Vue mixins (StateMixin, FilesMixin, etc.)
 ├── monaco/             # TextMate grammars and editor themes
 ├── plugins/            # Vue plugins (i18n, httpClient, socketClient, vuetify, filters)
 ├── router/             # Vue Router (hash mode) with auth guards
 ├── scss/               # Global styles and Vuetify variable overrides
-├── store/              # 30 Vuex modules (printer, files, config, webcams, etc.)
+├── store/              # 28 Vuex modules (printer, files, config, webcams, etc.)
 ├── types/              # UI-specific TypeScript types
 ├── typings/            # Global .d.ts declarations (Klipper, Moonraker namespaces)
 ├── util/               # Helper functions (30+)
@@ -115,12 +117,14 @@ src/
 ### Router & Authentication
 
 - Hash-based routing (`#/path`)
+- Views lazy-loaded via dynamic imports: `component: () => import('@/views/X.vue')`
+- Auth guard via `defaultRouteConfig` spread pattern; `isAuthenticated()` checks `store.state.auth`
 - JWT token auth with auto-refresh (axios interceptors)
-- Key routes: `/`, `/console`, `/jobs`, `/tune`, `/diagnostics`, `/configure`, `/settings`
+- Key routes: `/`, `/console`, `/jobs`, `/tune`, `/diagnostics`, `/timelapse`, `/history`, `/system`, `/configure`, `/settings`, `/camera/:cameraId`, `/preview`, `/login`
 
 ### Icons & Theming
 
-- MDI icons via `@mdi/js` — mapped in `src/globals.ts` (`Icons` object, 150+ mappings)
+- MDI icons via `@mdi/js` — mapped in `src/globals.ts` (`Icons` object, ~225 mappings)
 - Usage: `<v-icon>{{ $globals.Icons.close }}</v-icon>`
 - Vuetify theme with custom dark/light overrides in `src/scss/variables.scss`
 - PWA support with service worker in `src/sw.ts` (Workbox, injectManifest strategy)
@@ -154,6 +158,7 @@ src/
   - `I18nLocales` — locale YAML files
   - `MonacoLanguageImports` — TextMate grammars
   - `CameraComponents` — camera service Vue components
+- Views also dynamically imported in `src/router/index.ts` via `() => import('@/views/X.vue')`
 
 ## Testing Conventions
 
@@ -166,6 +171,7 @@ src/
 
 ## Code Style
 
+- Source must pass linting with **zero warnings and zero type errors** — run `npm run lint` and `npm run type-check` before committing
 - Vue class-style components with `vue-property-decorator` (`@Component`, `@Prop`, `@VModel`, `Mixins()`)
 - ESLint enforced: `neostandard` + `pluginVue.configs['flat/vue2-recommended']` + `pluginRegexp` + `@vue/eslint-config-typescript`
 - `.editorconfig` rules: 2 spaces, LF line endings, UTF-8, trim trailing whitespace, max line 100 (code)
@@ -173,7 +179,17 @@ src/
 - Use `consola` for logging, not `console.log` (configured in `src/setupConsola.ts` — warn in prod, verbose in dev)
 - Type imports: `import type { ... }` for types only (`verbatimModuleSyntax: true`)
 - `satisfies` keyword for store module type checking
-- Conventional commits required: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `types`, `i18n`
+
+## Git & Contribution Policy
+
+- **Conventional commits** required: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `types`, `i18n`
+- **Commit subject max 50 characters** — hard-enforced by `.husky/commit-msg` hook
+- **Signed-off-by** line required on all commits (use `git commit -s`): `Signed-off-by: Your Name <your@email>`
+- **PR titles must follow conventional commits** — CI-enforced via `amannn/action-semantic-pull-request` (scope optional)
+- **PR branches** must be off a branch other than `develop` or `master`
+- **Clean develop** preferred: squash and rebase feature branches prior to merge
+- **CHANGELOG visibility**: only `feat`, `fix`, `perf`, `refactor` appear in `CHANGELOG.md` (configured in `.versionrc.json`)
+- **CI pipeline order**: `npm ci` → `lint --no-fix` → `type-check` → `test:unit` → `circular-check` → `build`
 
 ## Common Gotchas
 
@@ -185,6 +201,78 @@ src/
 - `@/scss/variables` auto-injected into all SCSS/Sass files via Vite config
 - `path` aliased to `path-browserify` for browser compatibility
 - Strict Vuex mode enabled only in dev (`strict: import.meta.env.DEV`)
+- **SVG files auto-optimized on commit** — pre-commit hook runs SVGO on staged `.svg`, `.vue`, and `src/globals.ts` files
+- **`VUE_` env prefix required** — only env vars prefixed `VUE_` are exposed to app code via `import.meta.env` (Vite `envPrefix`)
+- **`import.meta.env.VERSION`** and **`import.meta.env.HASH`** (short git hash) are injected at build time
+- **`server/config.json`** is the runtime config source (deployed as `dist/config.json`) — contains theme presets, endpoints, hosted flag
+- **Translations managed via Weblate** — do not directly edit non-English locale files in `src/locales/`
+
+## Dev Container
+
+- VSCode Dev Container (`.devcontainer/`) bundles a `docker-klipper-simulavr` container — real Klipper/Moonraker simulation on port 7125, Fluidd on port 8080
+- `postCreateCommand` runs `npm ci && npm run bootstrap` automatically
+
+## Documentation Site
+
+- **Zensical** (Material for MkDocs successor) — static site generator in `docs/`
+- Config: `docs/zensical.toml` — nav, theme, extensions, social links
+- Content: `docs/docs/` — Markdown files with YAML frontmatter
+- Overrides: `docs/overrides/` — custom Jinja2 templates (header, htmltitle)
+- Custom CSS: `docs/docs/stylesheets/extra.css` — Fluidd brand colors
+- Glossary: `docs/includes/glossary.md` — abbreviation tooltips auto-appended to all pages
+- Lint: `markdownlint --config docs/.markdownlint.json docs/docs/`
+- Build: `cd docs && zensical build` (requires Python venv with zensical installed)
+- Serve: `cd docs && zensical serve` or `npm run serve:docs` (localhost:8000)
+- Deploy: GitHub Actions (`.github/workflows/docs.yml`) — builds on push to `master`, deploys to gh-pages with `docs.fluidd.xyz` CNAME
+
+### Documentation Structure
+
+```
+docs/
+├── docs/                  # Markdown content
+│   ├── index.md           # Homepage
+│   ├── getting-started.md # Installation (KIAUH, Docker, Manual, fluidd.xyz, FluiddPI)
+│   ├── configuration.md   # Fluidd Config, Klipper, Moonraker, Multiple Printers
+│   ├── customize.md       # Layout, themes, hiding components
+│   ├── features/
+│   │   ├── index.md       # Features overview (section landing page)
+│   │   ├── printing.md    # G-code viewer, thumbnails, bed mesh, print history
+│   │   ├── thermals.md    # Chart, presets, sensors
+│   │   ├── cameras.md
+│   │   ├── console.md
+│   │   ├── macros.md
+│   │   ├── multi-material.md  # Multiple extruders + Spoolman
+│   │   ├── multiple-printers.md
+│   │   ├── diagnostics.md
+│   │   ├── updates.md
+│   │   ├── system.md      # System info + notifications
+│   │   ├── authorization.md
+│   │   ├── slicer-uploads.md
+│   │   ├── timelapse.md
+│   │   ├── localization.md
+│   │   └── integrations.md  # Kalico, Happy Hare, AFC, Beacon, Obico, OctoEverywhere, etc.
+│   ├── development.md     # Dev container, local dev, localization
+│   ├── faq.md             # Organized by topic (Setup, Cameras, System, Printing)
+│   └── sponsors.md
+├── includes/
+│   └── glossary.md        # Abbreviation definitions (auto-appended)
+├── overrides/             # Jinja2 template overrides
+├── zensical.toml          # Site configuration
+└── .markdownlint.json     # Lint rules (MD013 and MD025 disabled)
+```
+
+### Documentation Conventions
+
+- Frontmatter: `title` (required), `icon` (top-level pages only, Lucide icons)
+- Images: `/assets/images/` path, stored in `docs/docs/assets/images/`
+- Code blocks: `ini` for Klipper/Moonraker config, `bash` for shell commands, `json` for JSON
+- Links: use `{.md-button}` attribute for standalone action links
+- Keys: use `++key++` syntax (pymdownx.keys extension) instead of `<kbd>`
+- Terminology: G-code (not gcode/Gcode), Wi-Fi (not WiFi), GitHub (not Github), Node.js (not NodeJS), SD card (not SDCard), em dash (—) not hyphen (-) for parenthetical dashes
+- Glossary terms (AFC, API, CORS, JWT, MCU, MMU, MPC, PID, etc.) get automatic tooltips
+- **Before committing docs changes**, always run:
+  - `markdownlint --config docs/.markdownlint.json docs/docs/` — must be clean
+  - `codespell docs/docs/` — must be clean (install via `pip install codespell`)
 
 ## Communication Style
 
