@@ -200,7 +200,9 @@ import {
   mdiWrench,
   mdiVariable,
   mdiArrowDownBold,
-  mdiArrowUpBold
+  mdiArrowUpBold,
+  mdiDockTop,
+  mdiDockBottom
 } from '@mdi/js'
 
 import {
@@ -230,8 +232,6 @@ export const Globals = Object.freeze({
   },
   NETWORK_REQUEST_TIMEOUT: 0,
   KLIPPY_RETRY_DELAY: 1500,
-  SOCKET_RETRY_DELAY: 2000,
-  SOCKET_PING_INTERVAL: 10000,
   CONSOLE_HISTORY_RETENTION: 1000, // total count
   CONSOLE_RECEIVE_PREFIX: '',
   CONSOLE_SEND_PREFIX: '$ ',
@@ -323,11 +323,11 @@ export const Globals = Object.freeze({
     settings: 's'
   },
   DOCS_ROOT: 'https://docs.fluidd.xyz',
-  DOCS_REQUIRED_CONFIGURATION: 'https://docs.fluidd.xyz/configuration/initial_setup',
-  DOCS_MULTIPLE_INSTANCES: 'https://docs.fluidd.xyz/configuration/multiple_printers',
-  DOCS_MOONRAKER_COMPONENTS: 'https://docs.fluidd.xyz/configuration/moonraker',
-  DOCS_AUTH_LOST_PASSWORD: 'https://docs.fluidd.xyz/authorization#lost-password',
-  DOCS_AUTH: 'https://docs.fluidd.xyz/authorization',
+  DOCS_REQUIRED_CONFIGURATION: 'https://docs.fluidd.xyz/features/multiple-printers/',
+  DOCS_MULTIPLE_INSTANCES: 'https://docs.fluidd.xyz/features/multiple-printers/',
+  DOCS_MOONRAKER_COMPONENTS: 'https://docs.fluidd.xyz/configuration/#moonraker',
+  DOCS_AUTH_LOST_PASSWORD: 'https://docs.fluidd.xyz/features/authorization/#lost-password',
+  DOCS_AUTH: 'https://docs.fluidd.xyz/features/authorization/',
   GITHUB_REPO: 'https://github.com/fluidd-core/fluidd'
 })
 
@@ -509,6 +509,8 @@ export const Icons = Object.freeze({
   beacon: mdiMagnet,
   pidCalibrate: mdiSineWave,
   database: mdiDatabase,
+  dockTop: mdiDockTop,
+  dockBottom: mdiDockBottom,
   mmu: mdiMulticast,
   mmuEditTtgMap: mdiStateMachine,
   mmuEditGateMap: mdiDatabaseEdit,
@@ -579,6 +581,7 @@ export const Waits = Object.freeze({
   onHomeZ: 'onHomeZ',
   onQGL: 'onQGL',
   onZTilt: 'onZTilt',
+  onAxisTwistCompensationCalibrate: 'onAxisTwistCompensationCalibrate',
   onBedScrewsAdjust: 'onBedScrewAdjust',
   onDatabaseList: 'onDatabaseList',
   onDatabaseCompact: 'onDatabaseCompact',
@@ -587,6 +590,7 @@ export const Waits = Object.freeze({
   onDatabaseDeleteBackup: 'onDatabaseDeleteBackup',
   onBedScrewsCalculate: 'onBedScrewsCalculate',
   onBedTiltCalibrate: 'onBedTiltCalibrate',
+  onCartographerAxisTwistCompensation: 'onCartographerAxisTwistCompensation',
   onCartographerScanCalibrate: 'onCartographerScanCalibrate',
   onCartographerTouchCalibrate: 'onCartographerTouchCalibrate',
   onDeltaCalibrate: 'onDeltaCalibrate',
