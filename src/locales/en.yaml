@@ -86,9 +86,10 @@ app:
     ShowTd1Color: "Show TD-1 Color"
     Unloading: "Unloading"
     UnloadLane: "Unload Lane"
-    Unknown: "Unknown"
     Weight: "Weight"
+    WeightRemaining: "{weight} g remaining"
     WeightSubtitle: "The weight of the filament in grams (without spool)."
+    WeightUsed: "{weight} g used"
   bedmesh:
     label:
       active: active
@@ -306,6 +307,7 @@ app:
       reset_file: Clear File
       reset_layout: Reset
       reset_default_layout: Reset Default
+      reset_to_default: Reset to default
       restart_firmware: Firmware Restart
       restart_service: Restart %{service}
       restart_service_klipper: Restart Klipper
@@ -810,6 +812,7 @@ app:
       save_and_restore_view_state: Save and restore view state
       sections_to_ignore_pending_configuration_changes: Sections to ignore
         Pending Configuration Changes
+      sensor_color: Sensor Color
       service_restart: Service Restart
       show_animations: Show animations
       show_barometric_pressure: Show barometric pressure

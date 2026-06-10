@@ -14,8 +14,7 @@ import i18n from '@/plugins/i18n'
 const evalCollectors = async (printer: Klipper.PrinterState, collectors: string[]): Promise<Record<string, unknown>> => {
   try {
     const data = await sandboxedEval(`
-    const printer = ${JSON.stringify(printer)}
-    const collectors = ${JSON.stringify(collectors)}
+    const { printer, collectors } = context
     const result = {}
 
     for (const collector of collectors) {
@@ -27,7 +26,13 @@ const evalCollectors = async (printer: Klipper.PrinterState, collectors: string[
     }
 
     return result
-  `, 'metrics') as Record<string, unknown>
+  `, {
+      feature: 'metrics',
+      context: {
+        printer,
+        collectors
+      }
+    }) as Record<string, unknown>
 
     return data
   } catch (e) {
@@ -163,19 +168,19 @@ export const actions = {
    */
 
   /**
-   * Stores the printers object list.
+   * Builds the subscription map from the printer object list and subscribes to updates.
    */
-  async onPrinterObjectsList ({ commit }, payload: Moonraker.KlippyApis.ObjectsListResponse) {
+  async onPrinterObjectsList (_, payload: Moonraker.KlippyApis.ObjectsListResponse) {
     // Given our object list, subscribe to any data we'd want constant updates for
     // and prepopulate our store.
     const subscriptions: Record<string, null> = {}
 
     for (const key of payload.objects) {
-      if (!key.includes('menu')) {
-        subscriptions[key] = null
+      if (key === 'menu' || key.startsWith('menu ')) {
+        continue
       }
 
-      commit('setPrinterObjectList', key.replace(' ', '.'))
+      subscriptions[key] = null
     }
 
     SocketActions.printerObjectsSubscribe(subscriptions)
