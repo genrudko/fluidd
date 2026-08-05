@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.37.3](https://github.com/fluidd-core/fluidd/compare/v1.37.2...v1.37.3) (2026-07-20)
+
+
+### Features
+
+* add retract and extrude indicator ([#1898](https://github.com/fluidd-core/fluidd/issues/1898)) ([2f7db5b](https://github.com/fluidd-core/fluidd/commit/2f7db5b763155752903e968289055168c854a37d))
+* **AFC:** Adding AFC print dialog ([#1900](https://github.com/fluidd-core/fluidd/issues/1900)) ([3b1fdbb](https://github.com/fluidd-core/fluidd/commit/3b1fdbba93f7bb80a348cfe72ab34f6208b8c2d5))
+* **i18n-fr:** Update French translations ([51b8e72](https://github.com/fluidd-core/fluidd/commit/51b8e7238991ee3f04f2d36152921f52bf71a7e8))
+* **i18n-sl:** Update Slovenian translations ([6381e70](https://github.com/fluidd-core/fluidd/commit/6381e708c613a18b6502c285af997896e1118869))
+* **i18n-th:** Add Thai translations ([915030d](https://github.com/fluidd-core/fluidd/commit/915030d10ea9e3fa59bae72de3f9c77d756a2f52))
+
+
+### Bug Fixes
+
+* don't remove file item if rename to same name ([2f4c9a3](https://github.com/fluidd-core/fluidd/commit/2f4c9a3b40eec714c52b370036579418173f8376))
+
+
+### Code Refactorings
+
+* stable keys bindings for v-for loops ([#1903](https://github.com/fluidd-core/fluidd/issues/1903)) ([c49e50e](https://github.com/fluidd-core/fluidd/commit/c49e50e30ab31b4bebfbd9d61e368fd56f0e2580))
+* typing improvements ([#1894](https://github.com/fluidd-core/fluidd/issues/1894)) ([bb92391](https://github.com/fluidd-core/fluidd/commit/bb923912e94215131382b7deb952c7cb3b9e5687))
+
+## [1.37.2](https://github.com/fluidd-core/fluidd/compare/v1.37.1...v1.37.2) (2026-06-23)
+
+
+### Features
+
+* adds Moonraker sensor charts ([#1885](https://github.com/fluidd-core/fluidd/issues/1885)) ([c199394](https://github.com/fluidd-core/fluidd/commit/c1993948043461d3bb323e89fd7dffcf6bef63fd))
+* adds support for Moonraker file roots details ([#1881](https://github.com/fluidd-core/fluidd/issues/1881)) ([ea60d78](https://github.com/fluidd-core/fluidd/commit/ea60d782b326f5bd0477e6394de7f259f30ebe32))
+* **afc:** Enhance Spoolman integration ([#1860](https://github.com/fluidd-core/fluidd/issues/1860)) ([85e105f](https://github.com/fluidd-core/fluidd/commit/85e105f08ddcab28c7a25f811eb81d5b2d003640))
+* **i18n-en:** Update English translations ([e6c59ff](https://github.com/fluidd-core/fluidd/commit/e6c59ffa7fdfac0f015ab352d3f49d2e34ca94e9))
+* **i18n-pl:** Update Polish translations ([4d58074](https://github.com/fluidd-core/fluidd/commit/4d580743d256c9da926fac58ff6cfff2f956d6e9))
+* linkExternalUrls to use GFM-style detection ([#1879](https://github.com/fluidd-core/fluidd/issues/1879)) ([7c6e164](https://github.com/fluidd-core/fluidd/commit/7c6e164332da58b2994b7f2580543975485b8a5c))
+* **Thermals:** customizable sensor colors ([#1871](https://github.com/fluidd-core/fluidd/issues/1871)) ([065d728](https://github.com/fluidd-core/fluidd/commit/065d728e070c9a4551cf4973db74b30d472ca479))
+* warn of very old Moonraker ([#1870](https://github.com/fluidd-core/fluidd/issues/1870)) ([efdcdc5](https://github.com/fluidd-core/fluidd/commit/efdcdc59a4206f7601c3481f302e2ef7916d0826))
+
+
+### Bug Fixes
+
+* add rel=noopener to target=_blank links ([#1880](https://github.com/fluidd-core/fluidd/issues/1880)) ([f80d943](https://github.com/fluidd-core/fluidd/commit/f80d943e8db6f2db5d4552310e2ac8a54ffe61ab))
+* correct color for selected tool ([#1865](https://github.com/fluidd-core/fluidd/issues/1865)) ([fe41a43](https://github.com/fluidd-core/fluidd/commit/fe41a43353d06b73b984e08784ae563f3bba857c))
+* split update check from notifications ([#1887](https://github.com/fluidd-core/fluidd/issues/1887)) ([a9da915](https://github.com/fluidd-core/fluidd/commit/a9da9152fce6395ba0b66d7a924b8812bad3ba9f))
+* **Thermals:** sensor sort order anomalies ([#1868](https://github.com/fluidd-core/fluidd/issues/1868)) ([95f26a3](https://github.com/fluidd-core/fluidd/commit/95f26a31162f25b0abdfdb11622dac2a7fbd8f22))
+
+
+### Code Refactorings
+
+* add AppInlineChart component ([#1889](https://github.com/fluidd-core/fluidd/issues/1889)) ([1f87be8](https://github.com/fluidd-core/fluidd/commit/1f87be86c3236f35671f651f0af9a3cb13bb4c5b))
+* adds SocketError type guard ([166ca96](https://github.com/fluidd-core/fluidd/commit/166ca96efd219dc1236fb51475e4c5d874d71f5d))
+* drop redundant console sanitize ([#1890](https://github.com/fluidd-core/fluidd/issues/1890)) ([40f9932](https://github.com/fluidd-core/fluidd/commit/40f9932159d7d511cc443449807ebef3350cf250))
+* e-charts imperative model ([#1888](https://github.com/fluidd-core/fluidd/issues/1888)) ([0678636](https://github.com/fluidd-core/fluidd/commit/06786362805ad440891517aa7b3c9af1330b1235))
+* enforce printer state immutability ([#1874](https://github.com/fluidd-core/fluidd/issues/1874)) ([d978cac](https://github.com/fluidd-core/fluidd/commit/d978cacfea2a2bdd02fb2267e7767d14881290b7))
+* freeze immutable entries ([#1875](https://github.com/fluidd-core/fluidd/issues/1875)) ([f2c6c8b](https://github.com/fluidd-core/fluidd/commit/f2c6c8bc121a8a37e85287b1e89525f3ae27ad6c))
+* **GcodePreview:** auto-zoom without cropping ([#1867](https://github.com/fluidd-core/fluidd/issues/1867)) ([85fee0a](https://github.com/fluidd-core/fluidd/commit/85fee0afe269b1c6118b586f04c22965104f1333))
+* improve default options handling ([c0f5967](https://github.com/fluidd-core/fluidd/commit/c0f596718f2d5634cabf9def4c7bc1131673b61c))
+* logout notification handling ([#1882](https://github.com/fluidd-core/fluidd/issues/1882)) ([6f4d60a](https://github.com/fluidd-core/fluidd/commit/6f4d60a54fc8e6e4a1d0eec2b7a1e12b0146799a))
+* replace requests array with Map ([0a23099](https://github.com/fluidd-core/fluidd/commit/0a23099a40e4255e056c4eedd8d0f7b8a548db82))
+* sandboxedEval context support ([#1873](https://github.com/fluidd-core/fluidd/issues/1873)) ([804d1a8](https://github.com/fluidd-core/fluidd/commit/804d1a8162cbedf30c7da5c8a68ff01be539a5b3))
+* type store action/mutation payloads ([#1877](https://github.com/fluidd-core/fluidd/issues/1877)) ([9719797](https://github.com/fluidd-core/fluidd/commit/9719797342fcc1369f77e0d322ffd36450a2dee7))
+* typing improvements ([5c4ec6e](https://github.com/fluidd-core/fluidd/commit/5c4ec6ecc683632080a8d28ea4541017fd6aecca))
+* typing improvements ([d7c08e1](https://github.com/fluidd-core/fluidd/commit/d7c08e148925dbec0b88ef435b65581b7d583847))
+
 ## [1.37.1](https://github.com/fluidd-core/fluidd/compare/v1.37.0...v1.37.1) (2026-06-01)
 
 

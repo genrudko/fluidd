@@ -1,5 +1,10 @@
 import Vue from 'vue'
 import Component from 'vue-class-component'
+import type { Spool } from '@/store/spoolman/types'
+import type { AppFile, AppFileWithMeta } from '@/store/files/types'
+
+// AFC's default full-spool weight (g) when no initial_weight is tracked (e.g. no Spoolman spool)
+const AFC_DEFAULT_SPOOL_WEIGHT = 1000
 
 @Component
 export default class AfcMixin extends Vue {
@@ -40,6 +45,13 @@ export default class AfcMixin extends Vue {
 
   get afcErrorState (): boolean {
     return this.afc?.error_state === true
+  }
+
+  get afcHasToolchanger (): boolean {
+    const printerState = this.$typedState.printer.printer
+
+    // AFC_Toolchanger has to be registered as a named section in klipper config
+    return Object.keys(printerState).some(key => key.startsWith('AFC_Toolchanger '))
   }
 
   get afcCurrentLane (): Klipper.AfcLaneState | undefined {
@@ -136,5 +148,66 @@ export default class AfcMixin extends Vue {
     const printerSettings: Klipper.SettingsState = this.$typedGetters['printer/getPrinterSettings']
 
     return printerSettings[`afc_hub ${hub.toLowerCase()}`]
+  }
+
+  // ─── Lane spool helpers ───────────────────────────────────────────────────
+  // Single method returning all resolved lane + spool data so each component
+  // does not need to call individual accessors or implement its own look-ups.
+
+  getAfcLaneInfo (lane: string): Klipper.AfcSpoolLaneInfo {
+    const laneObj = this.getAfcLaneObject(lane)
+
+    const spoolId = laneObj?.spool_id ?? undefined
+    const spool: Spool | null = spoolId
+      ? (this.$typedGetters['spoolman/getSpoolById'](spoolId) ?? null)
+      : null
+
+    // Color: td1_color (when enabled) → spoolman color_hex → lane color
+    let color: string
+    if (this.afc?.td1_present && laneObj?.td1_color && this.afcShowTd1Color) {
+      color = `#${laneObj.td1_color}`
+    } else if (spool?.filament?.color_hex) {
+      color = `#${spool.filament.color_hex.replace(/^#/, '')}`
+    } else {
+      color = laneObj?.color || ''
+    }
+
+    const material = spool?.filament?.material || laneObj?.material || ''
+    const remainingWeight = spool?.remaining_weight ?? laneObj?.weight
+    const fullWeight = spool?.initial_weight ?? laneObj?.initial_weight ?? AFC_DEFAULT_SPOOL_WEIGHT
+
+    let spoolPercent = 100
+    if (remainingWeight != null && fullWeight != null && fullWeight > 0) {
+      spoolPercent = Math.min(100, Math.round((remainingWeight / fullWeight) * 100))
+    }
+
+    const spoolmanBase: string | undefined = this.$typedGetters['spoolman/getSpoolmanUrl']
+    const spoolUrl = spoolmanBase && spoolId
+      ? `${spoolmanBase.replace(/\/$/, '')}/spool/show/${spoolId}`
+      : undefined
+
+    return {
+      spoolId,
+      spool,
+      color,
+      material,
+      filamentVendor: spool?.filament?.vendor?.name ?? undefined,
+      filamentName: spool?.filament?.name || laneObj?.filament_name || undefined,
+      remainingWeight,
+      fullWeight,
+      spoolPercent,
+      usedWeight: spool?.used_weight ?? undefined,
+      extruderTemp: spool?.filament?.settings_extruder_temp ?? laneObj?.extruder_temp ?? undefined,
+      bedTemp: spool?.filament?.settings_bed_temp ?? laneObj?.bed_temp ?? undefined,
+      spoolUrl,
+      filamentLoaded: laneObj ? (laneObj?.prep && laneObj?.load) : undefined
+    }
+  }
+
+  shouldShowAfcDialog (fileWithMeta: AppFileWithMeta | AppFile | undefined): boolean {
+    if (this.afc == null) return false
+    const hasMetadata = fileWithMeta != null && 'filament_weights' in fileWithMeta
+    const usedTools = hasMetadata ? (fileWithMeta!.filament_weights ?? []).filter(w => w > 0) : []
+    return usedTools.length > 0
   }
 }

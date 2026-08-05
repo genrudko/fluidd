@@ -117,23 +117,20 @@ export const actions = {
     await dispatch('logout', { invalidate: true })
   },
 
-  async addUser (_, user) {
-    await SocketActions.accessPostUser(user.username, user.password)
-
-    return user
+  /**
+   * Moonraker invalidated the current session (we triggered logout, or another
+   * client called access.logout with invalidate=true). The session is already
+   * invalid server-side, so run a plain logout without re-invalidating.
+   */
+  async onUserLoggedOut ({ dispatch }) {
+    await dispatch('logout')
   },
 
-  async removeUser (_, user) {
-    await SocketActions.accessDeleteUser(user.username)
-
-    return user
-  },
-
-  async onUserCreated ({ commit }, user) {
+  async onUserCreated ({ commit }, user: { username: string }) {
     commit('setAddUser', user)
   },
 
-  async onUserDeleted ({ commit }, user) {
+  async onUserDeleted ({ commit }, user: { username: string }) {
     commit('setRemoveUser', user)
   },
 
