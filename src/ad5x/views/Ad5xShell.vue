@@ -79,18 +79,18 @@ export default class Ad5xShell extends Vue {
     return 'Pending'
   }
 
-  created () {
+  async created (): Promise<void> {
     const backendAvailable = isAd5xBackendAvailable(
       this.$typedGetters['server/componentSupport']
     )
 
     if (!backendAvailable) {
-      void initializeAd5x(this.$store, false)
+      await initializeAd5x(this.$store, false)
       return
     }
 
     const api = new Ad5xApiClient(this.$socket)
-    void initializeAd5x(this.$store, true, api)
+    await initializeAd5x(this.$store, true, api)
   }
 }
 </script>
