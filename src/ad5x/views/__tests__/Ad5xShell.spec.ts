@@ -5,9 +5,17 @@ import Ad5xShell from '../Ad5xShell.vue'
 const localVue = createLocalVue()
 localVue.use(Vuex)
 
-function createStore () {
+function createStore (componentSupport: ReturnType<typeof vi.fn>) {
   return new Vuex.Store({
-    state: {}
+    state: {},
+    modules: {
+      server: {
+        namespaced: true,
+        getters: {
+          componentSupport: () => componentSupport
+        }
+      }
+    }
   })
 }
 
@@ -15,11 +23,8 @@ function mountShell (backendAvailable: boolean, emit = vi.fn()) {
   const componentSupport = vi.fn().mockReturnValue(backendAvailable)
   const wrapper = shallowMount(Ad5xShell, {
     localVue,
-    store: createStore(),
+    store: createStore(componentSupport),
     mocks: {
-      $typedGetters: {
-        'server/componentSupport': componentSupport
-      },
       $socket: { emit }
     }
   })
