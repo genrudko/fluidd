@@ -81,7 +81,7 @@ export default class Ad5xShell extends Vue {
 
   async created (): Promise<void> {
     const backendAvailable = isAd5xBackendAvailable(
-      this.$typedGetters['server/componentSupport']
+      this.$store.getters['server/componentSupport']
     )
 
     if (!backendAvailable) {

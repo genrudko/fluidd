@@ -5,8 +5,8 @@ describe('AD5X routes', () => {
     expect(ad5xRoutes).toHaveLength(1)
     expect(ad5xRoutes[0]).toMatchObject({
       path: '/ad5x',
-      name: 'ad5x'
+      name: 'ad5x',
+      component: expect.any(Function)
     })
-    expect(ad5xRoutes[0].component).toBeTypeOf('function')
   })
 })
