@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import type { RootState } from '@/store/types'
 import {
   AD5X_STORE_NAMESPACE,
   ensureAd5xStore,
@@ -10,9 +9,11 @@ import {
 
 Vue.use(Vuex)
 
+type TestRootState = Record<string, never>
+
 function createStore () {
-  return new Vuex.Store<RootState>({
-    state: {} as RootState
+  return new Vuex.Store<TestRootState>({
+    state: {}
   })
 }
 
