@@ -20,7 +20,15 @@ function createModule (): Module<Ad5xState, RootState> {
   return {
     namespaced: true,
     state: createState(),
+    actions: {
+      reset ({ commit }) {
+        commit('reset')
+      }
+    },
     mutations: {
+      reset (state) {
+        Object.assign(state, createState())
+      },
       setBackendAvailable (state, value: boolean) {
         state.backendAvailable = value
       },

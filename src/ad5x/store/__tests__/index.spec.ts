@@ -27,6 +27,22 @@ describe('AD5X local store', () => {
     expect(getAd5xState(store).apiStatus).toBe('idle')
   })
 
+  it('participates safely in Fluidd root reset dispatches', async () => {
+    const store = createStore()
+
+    await initializeAd5x(store, false)
+    expect(getAd5xState(store).apiStatus).toBe('unavailable')
+
+    await store.dispatch(`${AD5X_STORE_NAMESPACE}/reset`)
+
+    expect(getAd5xState(store)).toMatchObject({
+      backendAvailable: false,
+      apiStatus: 'idle',
+      capabilities: null,
+      error: null
+    })
+  })
+
   it('does not call AD5X API when the backend is absent', async () => {
     const store = createStore()
     const getCapabilities = vi.fn()
