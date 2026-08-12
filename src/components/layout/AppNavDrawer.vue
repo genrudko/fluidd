@@ -92,6 +92,14 @@
           </app-nav-item>
 
           <app-nav-item
+            v-if="supportsAd5x"
+            icon="$codeJson"
+            to="ad5x"
+          >
+            Plugins AD5X
+          </app-nav-item>
+
+          <app-nav-item
             icon="$codeJson"
             to="configure"
           >
@@ -151,6 +159,7 @@ import { Component, Mixins, VModel } from 'vue-property-decorator'
 
 import StateMixin from '@/mixins/state'
 import BrowserMixin from '@/mixins/browser'
+import { isAd5xBackendAvailable } from '@/ad5x/integration'
 
 @Component({})
 export default class AppNavDrawer extends Mixins(StateMixin, BrowserMixin) {
@@ -163,6 +172,10 @@ export default class AppNavDrawer extends Mixins(StateMixin, BrowserMixin) {
 
   get supportsTimelapse (): boolean {
     return this.$typedGetters['server/componentSupport']('timelapse')
+  }
+
+  get supportsAd5x (): boolean {
+    return isAd5xBackendAvailable(this.$typedGetters['server/componentSupport'])
   }
 
   get enableDiagnostics (): boolean {
