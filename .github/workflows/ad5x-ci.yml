@@ -1,0 +1,50 @@
+name: AD5X CI
+
+on:
+  push:
+    branches:
+      - ad5x-dev
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm i --frozen-lockfile
+
+      - name: Run lint
+        run: |
+          pnpm run lint --no-fix
+
+      - name: Run type check
+        run: |
+          pnpm run type-check
+
+      - name: Run tests
+        run: |
+          pnpm run test:unit
+
+      - name: Run circular references check
+        run: |
+          pnpm run circular-check
+
+      - name: Build
+        run: |
+          pnpm run build
