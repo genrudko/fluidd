@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import VueRouter, { type RouteConfig } from 'vue-router'
 import store from '@/store'
+import { ad5xRoutes } from '@/ad5x/router'
 
 Vue.use(VueRouter)
 
@@ -119,6 +120,7 @@ const routes: Array<RouteConfig> = [
     name: 'icons',
     component: () => import('@/views/Icons.vue')
   },
+  ...ad5xRoutes,
   {
     path: '*',
     name: 'not_found',
