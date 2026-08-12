@@ -90,7 +90,7 @@ export default class Ad5xShell extends Vue {
       return
     }
 
-    const socket = (this as Ad5xShell & { $socket: Ad5xSocketTransport }).$socket
+    const socket = (this as unknown as { $socket: Ad5xSocketTransport }).$socket
     const api = new Ad5xApiClient(socket)
     await initializeAd5x(this.$store, true, api)
   }
