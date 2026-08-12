@@ -53,6 +53,7 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 import { Ad5xApiClient } from '@/ad5x/api/client'
+import type { Ad5xSocketTransport } from '@/ad5x/api/types'
 import { isAd5xBackendAvailable } from '@/ad5x/integration'
 import { getAd5xState, initializeAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
@@ -89,7 +90,8 @@ export default class Ad5xShell extends Vue {
       return
     }
 
-    const api = new Ad5xApiClient(this.$socket)
+    const socket = (this as Ad5xShell & { $socket: Ad5xSocketTransport }).$socket
+    const api = new Ad5xApiClient(socket)
     await initializeAd5x(this.$store, true, api)
   }
 }
