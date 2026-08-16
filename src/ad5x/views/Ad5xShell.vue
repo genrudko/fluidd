@@ -27,9 +27,15 @@
               </td>
             </tr>
             <tr>
-              <th>Capabilities</th>
-              <td data-test="capabilities-status">
-                {{ capabilitiesStatus }}
+              <th>Snapshot</th>
+              <td data-test="snapshot-status">
+                {{ snapshotStatus }}
+              </td>
+            </tr>
+            <tr v-if="ad5xState.snapshot">
+              <th>Backend version</th>
+              <td data-test="backend-version">
+                {{ ad5xState.snapshot.backend_version }}
               </td>
             </tr>
           </tbody>
@@ -44,6 +50,11 @@
         >
           {{ ad5xState.error }}
         </v-alert>
+
+        <z-calibration-status-card
+          v-if="ad5xState.apiStatus === 'compatible' && ad5xState.snapshot"
+          :snapshot="ad5xState.snapshot"
+        />
       </v-card-text>
     </v-card>
   </v-container>
@@ -54,11 +65,16 @@ import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 import { Ad5xApiClient } from '@/ad5x/api/client'
 import type { Ad5xSocketTransport } from '@/ad5x/api/types'
+import ZCalibrationStatusCard from '@/ad5x/components/ZCalibrationStatusCard.vue'
 import { isAd5xBackendAvailable } from '@/ad5x/integration'
 import { getAd5xState, initializeAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
-@Component({})
+@Component({
+  components: {
+    ZCalibrationStatusCard
+  }
+})
 export default class Ad5xShell extends Vue {
   get ad5xState (): Ad5xState {
     return getAd5xState(this.$store)
@@ -72,7 +88,7 @@ export default class Ad5xShell extends Vue {
     return this.backendAvailable ? 'Available' : 'Unavailable'
   }
 
-  get capabilitiesStatus (): string {
+  get snapshotStatus (): string {
     if (!this.backendAvailable) return 'Unavailable'
     if (this.ad5xState.apiStatus === 'compatible') return 'Received'
     if (this.ad5xState.apiStatus === 'error') return 'Error'
