@@ -1,5 +1,5 @@
 import type { Module, Store } from 'vuex'
-import type { Ad5xApi, Ad5xCapabilities } from '../api/types'
+import type { Ad5xApi, Ad5xSnapshot } from '../api/types'
 import type { Ad5xApiStatus, Ad5xState } from './types'
 
 export const AD5X_STORE_NAMESPACE = 'ad5x'
@@ -10,7 +10,7 @@ function createState (): Ad5xState {
   return {
     backendAvailable: false,
     apiStatus: 'idle',
-    capabilities: null,
+    snapshot: null,
     error: null
   }
 }
@@ -34,8 +34,8 @@ function createModule<TRootState> (): Module<Ad5xState, TRootState> {
       setApiStatus (state, value: Ad5xApiStatus) {
         state.apiStatus = value
       },
-      setCapabilities (state, value: Ad5xCapabilities | null) {
-        state.capabilities = value
+      setSnapshot (state, value: Ad5xSnapshot | null) {
+        state.snapshot = value
       },
       setError (state, value: string | null) {
         state.error = value
@@ -68,7 +68,7 @@ export async function initializeAd5x<TRootState> (
 ): Promise<void> {
   ensureAd5xStore(store)
   store.commit(`${AD5X_STORE_NAMESPACE}/setBackendAvailable`, backendAvailable)
-  store.commit(`${AD5X_STORE_NAMESPACE}/setCapabilities`, null)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, null)
   store.commit(`${AD5X_STORE_NAMESPACE}/setError`, null)
 
   if (!backendAvailable) {
@@ -85,9 +85,9 @@ export async function initializeAd5x<TRootState> (
   store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'loading')
 
   try {
-    const capabilities = await api.getCapabilities()
+    const snapshot = await api.getSnapshot()
 
-    store.commit(`${AD5X_STORE_NAMESPACE}/setCapabilities`, capabilities)
+    store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, snapshot)
     store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'compatible')
   } catch (error: unknown) {
     store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'error')
