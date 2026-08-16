@@ -96,8 +96,10 @@ describe('ZCalibrationStatusCard', () => {
   })
 
   it('fails safely when the Z Calibration module is absent', () => {
-    const payload = snapshot()
-    payload.modules = {}
+    const payload = {
+      ...snapshot(),
+      modules: {}
+    }
 
     const wrapper = shallowMount(ZCalibrationStatusCard, {
       propsData: { snapshot: payload }
