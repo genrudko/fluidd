@@ -17,6 +17,16 @@ function createStore () {
   })
 }
 
+function snapshot () {
+  return {
+    api_version: '1.0' as const,
+    backend_version: '0.1.2',
+    revision: 3,
+    backend: { health: 'ok' },
+    modules: {}
+  }
+}
+
 describe('AD5X local store', () => {
   it('registers lazily without changing the Fluidd root store registry', () => {
     const store = createStore()
@@ -39,39 +49,53 @@ describe('AD5X local store', () => {
     expect(getAd5xState(store)).toMatchObject({
       backendAvailable: false,
       apiStatus: 'idle',
-      capabilities: null,
+      snapshot: null,
       error: null
     })
   })
 
   it('does not call AD5X API when the backend is absent', async () => {
     const store = createStore()
-    const getCapabilities = vi.fn()
+    const getSnapshot = vi.fn()
 
-    await initializeAd5x(store, false, { getCapabilities })
+    await initializeAd5x(store, false, { getSnapshot })
 
-    expect(getCapabilities).not.toHaveBeenCalled()
+    expect(getSnapshot).not.toHaveBeenCalled()
     expect(getAd5xState(store)).toMatchObject({
       backendAvailable: false,
       apiStatus: 'unavailable',
-      capabilities: null,
+      snapshot: null,
       error: null
     })
   })
 
-  it('accepts a mocked capability payload when the backend is present', async () => {
+  it('stores the canonical snapshot when the backend is present', async () => {
     const store = createStore()
-    const payload = { modules: ['diagnostic'] }
-    const getCapabilities = vi.fn().mockResolvedValue(payload)
+    const payload = snapshot()
+    const getSnapshot = vi.fn().mockResolvedValue(payload)
 
-    await initializeAd5x(store, true, { getCapabilities })
+    await initializeAd5x(store, true, { getSnapshot })
 
-    expect(getCapabilities).toHaveBeenCalledOnce()
+    expect(getSnapshot).toHaveBeenCalledOnce()
     expect(getAd5xState(store)).toMatchObject({
       backendAvailable: true,
       apiStatus: 'compatible',
-      capabilities: payload,
+      snapshot: payload,
       error: null
+    })
+  })
+
+  it('fails safely when snapshot retrieval rejects', async () => {
+    const store = createStore()
+    const getSnapshot = vi.fn().mockRejectedValue(new Error('snapshot unavailable'))
+
+    await initializeAd5x(store, true, { getSnapshot })
+
+    expect(getAd5xState(store)).toMatchObject({
+      backendAvailable: true,
+      apiStatus: 'error',
+      snapshot: null,
+      error: 'snapshot unavailable'
     })
   })
 })
