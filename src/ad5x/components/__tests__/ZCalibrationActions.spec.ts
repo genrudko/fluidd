@@ -13,7 +13,7 @@ function createStore (state = 'standby') {
         getters: {
           getKlippyReady: () => true,
           getPrinterState: () => state,
-          getHomedAxes: () => (axes: string) => axes === 'z' ? false : false
+          getHomedAxes: () => () => false
         }
       }
     }
