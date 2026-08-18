@@ -9,7 +9,7 @@
           Центр калибровки Z
         </div>
         <div class="text-caption text--secondary">
-          Z-Mod выполняет физический Auto-Z. Plugins AD5X только объясняет и проверяет состояние.
+          Z-Mod выполняет физический Auto-Z. Plugins AD5X объясняет состояние и следит за безопасными границами.
         </div>
       </div>
       <v-spacer />
@@ -30,7 +30,7 @@
         :type="ready ? 'success' : 'warning'"
         text
       >
-        <strong>{{ ready ? 'Калибровка готова к работе' : 'Калибровка требует внимания' }}</strong>
+        <strong>{{ readyTitle }}</strong>
         <div class="mt-1">
           {{ readinessMessage }}
         </div>
@@ -42,9 +42,9 @@
         text
         type="warning"
       >
-        В итоговом Klipper Z-offset остаётся необъяснённая составляющая
+        В итоговом Z-offset есть необъяснённая составляющая
         <strong>{{ formatMm(module.state.offset.external_unknown) }}</strong>.
-        Она намеренно не считается babystepping или иной известной поправкой.
+        Она намеренно не считается babystepping или другой известной поправкой.
       </v-alert>
 
       <v-alert
@@ -59,14 +59,16 @@
       <v-row dense>
         <v-col
           cols="12"
-          md="4"
+          sm="4"
         >
           <v-card
             class="fill-height"
             outlined
           >
-            <v-card-subtitle>Итоговый Z-offset Klipper</v-card-subtitle>
-            <v-card-text>
+            <v-card-subtitle class="pb-1">
+              Итоговый Z-offset
+            </v-card-subtitle>
+            <v-card-text class="pt-1">
               <div
                 class="text-h5"
                 data-test="z-effective-offset"
@@ -74,7 +76,7 @@
                 {{ formatNullableMm(module.state.offset.effective) }}
               </div>
               <div class="text-caption text--secondary">
-                Фактический `gcode_move.homing_origin.z`
+                {{ effectiveCaption }}
               </div>
             </v-card-text>
           </v-card>
@@ -82,14 +84,16 @@
 
         <v-col
           cols="12"
-          md="4"
+          sm="4"
         >
           <v-card
             class="fill-height"
             outlined
           >
-            <v-card-subtitle>Auto-Z текущего запуска</v-card-subtitle>
-            <v-card-text>
+            <v-card-subtitle class="pb-1">
+              Auto-Z поправка
+            </v-card-subtitle>
+            <v-card-text class="pt-1">
               <div
                 class="text-h5"
                 data-test="z-auto-alignment"
@@ -97,7 +101,7 @@
                 {{ formatMm(module.state.offset.auto_alignment) }}
               </div>
               <div class="text-caption text--secondary">
-                Read-only наблюдение значения Z-Mod
+                Значение Z-Mod, только для наблюдения
               </div>
             </v-card-text>
           </v-card>
@@ -105,14 +109,16 @@
 
         <v-col
           cols="12"
-          md="4"
+          sm="4"
         >
           <v-card
             class="fill-height"
             outlined
           >
-            <v-card-subtitle>Пользовательская коррекция</v-card-subtitle>
-            <v-card-text>
+            <v-card-subtitle class="pb-1">
+              Пользовательская поправка
+            </v-card-subtitle>
+            <v-card-text class="pt-1">
               <div
                 class="text-h5"
                 data-test="z-persistent-user"
@@ -120,14 +126,17 @@
                 {{ formatMm(module.state.offset.persistent_user) }}
               </div>
               <div class="text-caption text--secondary">
-                Сохранённый persistent Z trim
+                Сохранённый Z trim
               </div>
             </v-card-text>
           </v-card>
         </v-col>
       </v-row>
 
-      <v-simple-table class="mt-4">
+      <v-simple-table
+        class="mt-3"
+        dense
+      >
         <tbody>
           <tr>
             <th>Состояние принтера</th>
@@ -136,31 +145,31 @@
             </td>
           </tr>
           <tr>
-            <th>Политика перед печатью</th>
+            <th>Проверка Z перед печатью</th>
             <td data-test="z-hook-state">
               {{ hookLabel }}
             </td>
           </tr>
           <tr>
-            <th>Владелец физического Auto-Z</th>
+            <th>Физический Auto-Z выполняет</th>
             <td data-test="z-motion-owner">
-              {{ module.state.calibration.motion_owner }}
+              {{ motionOwnerLabel }}
             </td>
           </tr>
           <tr>
             <th>Запись Z из Plugins AD5X</th>
             <td data-test="z-write-gate">
-              {{ module.state.calibration.offset_write_enabled ? 'разрешена' : 'запрещена' }}
+              {{ module.state.calibration.offset_write_enabled ? 'разрешена' : 'запрещена (безопасный режим)' }}
             </td>
           </tr>
           <tr>
             <th>Движения из Plugins AD5X</th>
             <td data-test="z-motion-actions">
-              {{ module.state.calibration.motion_actions_enabled ? 'разрешены' : 'запрещены' }}
+              {{ module.state.calibration.motion_actions_enabled ? 'разрешены' : 'запрещены (безопасный режим)' }}
             </td>
           </tr>
           <tr>
-            <th>Provenance</th>
+            <th>Состав итогового Z</th>
             <td data-test="z-provenance">
               {{ provenanceLabel }}
             </td>
@@ -175,7 +184,7 @@
       </v-simple-table>
 
       <v-expansion-panels
-        class="mt-4"
+        class="mt-3"
         flat
       >
         <v-expansion-panel>
@@ -196,6 +205,14 @@
                   <td>{{ snapshot.revision }}</td>
                 </tr>
                 <tr>
+                  <th>Effective valid</th>
+                  <td>{{ effectiveValid ? 'yes' : 'no' }}</td>
+                </tr>
+                <tr>
+                  <th>Raw homing_origin.z</th>
+                  <td>{{ formatNullableMm(reportedHomingOriginZ) }}</td>
+                </tr>
+                <tr>
                   <th>Known total</th>
                   <td>{{ formatMm(module.state.offset.known_total) }}</td>
                 </tr>
@@ -206,6 +223,10 @@
                 <tr>
                   <th>External unknown</th>
                   <td>{{ formatMm(module.state.offset.external_unknown) }}</td>
+                </tr>
+                <tr>
+                  <th>Provenance model</th>
+                  <td>{{ module.state.provenance.model }}</td>
                 </tr>
                 <tr>
                   <th>Policy ID</th>
@@ -248,6 +269,17 @@ export default class ZCalibrationStatusCard extends Vue {
     return this.snapshot.module
   }
 
+  get effectiveValid (): boolean {
+    const runtimeValue = this.module.state.runtime.effective_valid
+    return typeof runtimeValue === 'boolean'
+      ? runtimeValue
+      : this.module.state.offset.effective !== null
+  }
+
+  get reportedHomingOriginZ (): number | null {
+    return this.module.state.provenance.reported_homing_origin_z ?? null
+  }
+
   get ready (): boolean {
     const calibration = this.module.state.calibration
 
@@ -261,9 +293,19 @@ export default class ZCalibrationStatusCard extends Vue {
       this.module.state.safety.fail_closed
   }
 
+  get readyTitle (): string {
+    return this.ready
+      ? 'Система Z-калибровки готова'
+      : 'Система Z-калибровки требует внимания'
+  }
+
   get readinessMessage (): string {
+    if (this.ready && !this.effectiveValid) {
+      return 'Защитный контур активен. Итоговый Z-offset станет доступен после homing Z.'
+    }
+
     if (this.ready) {
-      return 'Z-Mod владеет движением и контактом; защитная политика загружена; frontend не может писать Z.'
+      return 'Z-Mod владеет движением и контактом; защитная политика загружена; Plugins AD5X не может писать Z.'
     }
 
     const problems: string[] = []
@@ -271,34 +313,75 @@ export default class ZCalibrationStatusCard extends Vue {
 
     if (!this.module.available) problems.push('runtime недоступен')
     if (this.module.health !== 'ok') problems.push(`health=${this.module.health}`)
-    if (calibration.motion_owner !== 'zmod') problems.push(`motion owner=${calibration.motion_owner}`)
-    if (calibration.motion_actions_enabled) problems.push('разрешены motion actions')
+    if (calibration.motion_owner !== 'zmod') problems.push(`владелец движения=${calibration.motion_owner}`)
+    if (calibration.motion_actions_enabled) problems.push('разрешены движения')
     if (calibration.offset_write_enabled) problems.push('разрешена запись Z')
     if (calibration.offset_hook_status !== 'loaded') problems.push(`hook=${calibration.offset_hook_status}`)
     if (calibration.integration.policy_status !== 'loaded') problems.push(`policy=${calibration.integration.policy_status}`)
     if (!this.module.state.safety.fail_closed) problems.push('fail-closed выключен')
 
-    return problems.join('; ') || 'Backend не подтвердил полностью безопасное состояние.'
+    return problems.join('; ') || 'Backend не подтвердил безопасное состояние.'
   }
 
   get hasExternalUnknown (): boolean {
-    return Math.abs(this.module.state.offset.external_unknown) > 0.000001
+    return this.effectiveValid &&
+      this.module.state.provenance.status === 'external_unknown' &&
+      Math.abs(this.module.state.offset.external_unknown) > 0.000001
+  }
+
+  get effectiveCaption (): string {
+    return this.effectiveValid
+      ? 'Фактический итоговый offset Klipper'
+      : 'Появится после homing Z'
   }
 
   get runtimeLabel (): string {
     const runtime = this.module.state.runtime
-    const homed = runtime.homed_axes || 'не выполнен homing'
-    return `${runtime.klippy}; ${runtime.print_state}; ${homed}`
+    const printStates: Record<string, string> = {
+      standby: 'ожидание',
+      printing: 'печать',
+      paused: 'пауза',
+      complete: 'печать завершена',
+      cancelled: 'печать отменена',
+      error: 'ошибка'
+    }
+    const klippy = runtime.klippy === 'ready' ? 'Klipper готов' : `Klipper: ${runtime.klippy}`
+    const printState = printStates[runtime.print_state] || runtime.print_state
+    const homed = (runtime.homed_axes || '').toLowerCase()
+    const homing = homed.includes('z')
+      ? `homing: ${runtime.homed_axes.toUpperCase()}`
+      : 'homing Z не выполнен'
+
+    return `${klippy}; ${printState}; ${homing}`
   }
 
   get hookLabel (): string {
     const calibration = this.module.state.calibration
-    const policy = calibration.integration.policy_id || 'policy неизвестна'
-    return `${calibration.offset_hook_status}; ${policy}`
+
+    if (calibration.offset_hook_status === 'loaded' && calibration.integration.policy_status === 'loaded') {
+      return 'активна'
+    }
+
+    return `не подтверждена (hook=${calibration.offset_hook_status}; policy=${calibration.integration.policy_status})`
+  }
+
+  get motionOwnerLabel (): string {
+    return this.module.state.calibration.motion_owner === 'zmod'
+      ? 'Z-Mod'
+      : this.module.state.calibration.motion_owner
   }
 
   get provenanceLabel (): string {
-    return `${this.module.state.provenance.status} (${this.module.state.provenance.model})`
+    const labels: Record<string, string> = {
+      reconciled: 'все известные составляющие согласованы',
+      not_homed: 'станет доступен после homing Z',
+      external_unknown: 'есть необъяснённая составляющая',
+      partial: 'данные доступны частично',
+      unsupported_zmod_offset_path: 'текущий offset-путь Z-Mod не поддержан',
+      unavailable: 'недоступно'
+    }
+
+    return labels[this.module.state.provenance.status] || 'состояние требует диагностики'
   }
 
   get slicerOffsetLabel (): string {
@@ -306,11 +389,11 @@ export default class ZCalibrationStatusCard extends Vue {
     if (job.requested_slicer_z_offset === null) return 'не задан'
 
     const requested = this.formatMm(job.requested_slicer_z_offset)
-    const effect = job.slicer_z_offset_effect === 'ignored_by_zmod_global_offset_path'
-      ? 'игнорируется текущим global-offset путём Z-Mod'
-      : job.slicer_z_offset_effect
+    if (job.slicer_z_offset_effect === 'ignored_by_zmod_global_offset_path') {
+      return `${requested}; текущий режим Z-Mod его не применяет`
+    }
 
-    return `${requested}; ${effect}`
+    return `${requested}; эффект не подтверждён`
   }
 
   get hookCommandsLabel (): string {

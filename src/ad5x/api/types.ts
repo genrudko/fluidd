@@ -42,6 +42,7 @@ export interface Ad5xZCalibrationState {
     sources: Readonly<Record<string, string>>
     missing_components: readonly string[]
     actual_effective: number | null
+    reported_homing_origin_z?: number | null
     requested_slicer_z_offset: number | null
     slicer_z_offset_effect: string
     rc_path: Readonly<Record<string, unknown>>
@@ -55,6 +56,7 @@ export interface Ad5xZCalibrationState {
     klippy: string
     print_state: string
     homed_axes: string
+    effective_valid?: boolean
   }
   safety: {
     fail_closed: boolean
@@ -192,6 +194,7 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
       !Object.values(provenance.sources).every(source => typeof source === 'string') ||
       !isStringArray(provenance.missing_components) ||
       !isNullableFiniteNumber(provenance.actual_effective) ||
+      !(provenance.reported_homing_origin_z === undefined || isNullableFiniteNumber(provenance.reported_homing_origin_z)) ||
       !isNullableFiniteNumber(provenance.requested_slicer_z_offset) ||
       typeof provenance.slicer_z_offset_effect !== 'string' ||
       !isRecord(provenance.rc_path)) return false
@@ -204,7 +207,8 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
   if (!isRecord(runtime) ||
       typeof runtime.klippy !== 'string' ||
       typeof runtime.print_state !== 'string' ||
-      typeof runtime.homed_axes !== 'string') return false
+      typeof runtime.homed_axes !== 'string' ||
+      !(runtime.effective_valid === undefined || typeof runtime.effective_valid === 'boolean')) return false
 
   if (!isRecord(safety) ||
       typeof safety.fail_closed !== 'boolean' ||

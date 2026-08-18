@@ -38,20 +38,21 @@ function zModule () {
         persistent_user: -0.016,
         slicer_job: 0,
         live_adjustment: 0,
-        external_unknown: 0.016,
+        external_unknown: 0,
         known_total: -0.016,
-        effective: 0,
-        provenance_status: 'external_unknown'
+        effective: null,
+        provenance_status: 'not_homed'
       },
       provenance: {
-        status: 'external_unknown',
+        status: 'not_homed',
         model: 'zmod-saved-check-observer-v1',
         sources: {
-          effective: 'gcode_move.homing_origin.z'
+          effective: 'invalid_until_z_homed'
         },
         missing_components: [],
-        actual_effective: 0,
-        requested_slicer_z_offset: 99,
+        actual_effective: null,
+        reported_homing_origin_z: 0,
+        requested_slicer_z_offset: null,
         slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path',
         rc_path: {
           accepted_saved_check_flags: true
@@ -59,13 +60,14 @@ function zModule () {
       },
       job: {
         phase: 'standby',
-        requested_slicer_z_offset: 99,
+        requested_slicer_z_offset: null,
         slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path'
       },
       runtime: {
         klippy: 'ready',
         print_state: 'standby',
-        homed_axes: ''
+        homed_axes: '',
+        effective_valid: false
       },
       safety: {
         fail_closed: true,
@@ -79,7 +81,7 @@ function zModule () {
 function zSnapshot () {
   return {
     api_version: '1.0',
-    module_version: '0.1.2',
+    module_version: '0.1.3',
     revision: 8,
     module: zModule()
   }
@@ -133,6 +135,26 @@ describe('Ad5xApiClient', () => {
 
     await expect(client.getZCalibrationDiagnostics()).resolves.toEqual(payload)
     expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.z_calibration.diagnostics')
+  })
+
+  it('accepts the additive 0.1.3 unhomed validity fields', async () => {
+    const payload = zSnapshot()
+    const client = new Ad5xApiClient({
+      emit: vi.fn().mockResolvedValue(payload)
+    })
+
+    await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
+  })
+
+  it('keeps schema 1.1 compatible when additive validity fields are absent', async () => {
+    const payload = zSnapshot()
+    delete payload.module.state.runtime.effective_valid
+    delete payload.module.state.provenance.reported_homing_origin_z
+    const client = new Ad5xApiClient({
+      emit: vi.fn().mockResolvedValue(payload)
+    })
+
+    await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
   })
 
   it('rejects a standalone snapshot from a different API contract', async () => {

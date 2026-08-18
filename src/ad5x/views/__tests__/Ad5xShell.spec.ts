@@ -32,7 +32,7 @@ function sharedSnapshot () {
 function zSnapshot () {
   return {
     api_version: '1.0',
-    module_version: '0.1.2',
+    module_version: '0.1.3',
     revision: 8,
     module: {
       schema_version: '1.1',
@@ -61,30 +61,32 @@ function zSnapshot () {
           persistent_user: -0.016,
           slicer_job: 0,
           live_adjustment: 0,
-          external_unknown: 0.016,
+          external_unknown: 0,
           known_total: -0.016,
-          effective: 0,
-          provenance_status: 'external_unknown'
+          effective: null,
+          provenance_status: 'not_homed'
         },
         provenance: {
-          status: 'external_unknown',
+          status: 'not_homed',
           model: 'zmod-saved-check-observer-v1',
-          sources: { effective: 'gcode_move.homing_origin.z' },
+          sources: { effective: 'invalid_until_z_homed' },
           missing_components: [],
-          actual_effective: 0,
-          requested_slicer_z_offset: 99,
+          actual_effective: null,
+          reported_homing_origin_z: 0,
+          requested_slicer_z_offset: null,
           slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path',
           rc_path: { accepted_saved_check_flags: true }
         },
         job: {
           phase: 'standby',
-          requested_slicer_z_offset: 99,
+          requested_slicer_z_offset: null,
           slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path'
         },
         runtime: {
           klippy: 'ready',
           print_state: 'standby',
-          homed_axes: ''
+          homed_axes: '',
+          effective_valid: false
         },
         safety: {
           fail_closed: true,
