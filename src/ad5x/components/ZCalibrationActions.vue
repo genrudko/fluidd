@@ -14,7 +14,7 @@
         color="primary"
         data-test="z-home-action"
         :disabled="homeDisabled"
-        :loading="hasWait($waits.onHomeZ)"
+        :loading="homeLoading"
         small
         @click="homeZ"
       >
@@ -40,27 +40,87 @@
       </app-btn>
 
       <div class="text-caption text--secondary mb-2">
-        Homing выполняется штатным механизмом Fluidd/Klipper. Физический Auto-Z остаётся под управлением Z-Mod.
+        Homing использует тот же `printer.gcode.script`, что штатный Toolhead Fluidd. Физический Auto-Z остаётся под управлением Z-Mod.
       </div>
+
+      <v-alert
+        v-if="homeError"
+        class="mt-2 mb-0 flex-grow-1"
+        data-test="z-home-error"
+        dense
+        text
+        type="warning"
+      >
+        {{ homeError }}
+      </v-alert>
     </v-card-text>
   </v-card>
 </template>
 
 <script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
-import StateMixin from '@/mixins/state'
-import ToolheadMixin from '@/mixins/toolhead'
+import Vue from 'vue'
+import { Component, Prop } from 'vue-property-decorator'
+
+type FluiddSocket = {
+  emit: (
+    method: string,
+    options?: {
+      dispatch?: string
+      params?: Record<string, unknown>
+    }
+  ) => Promise<unknown>
+}
 
 @Component({})
-export default class ZCalibrationActions extends Mixins(StateMixin, ToolheadMixin) {
+export default class ZCalibrationActions extends Vue {
   @Prop({ default: false }) readonly refreshLoading!: boolean
 
-  get homeDisabled (): boolean {
-    return !this.klippyReady || this.printerBusy
+  homeLoading = false
+  homeError: string | null = null
+
+  get klippyReady (): boolean {
+    return Boolean(this.$store.getters['printer/getKlippyReady'])
   }
 
-  homeZ (): void {
-    this.sendGcode('G28 Z', this.$waits.onHomeZ)
+  get printerBusy (): boolean {
+    const state = String(this.$store.getters['printer/getPrinterState'] || '')
+    return state === 'printing' || state === 'paused' || state === 'busy'
+  }
+
+  get zHomed (): boolean {
+    const getHomedAxes = this.$store.getters['printer/getHomedAxes'] as ((axes: string) => boolean) | undefined
+    return typeof getHomedAxes === 'function' && getHomedAxes('z')
+  }
+
+  get homeDisabled (): boolean {
+    return !this.klippyReady || this.printerBusy || this.homeLoading
+  }
+
+  private socket (): FluiddSocket {
+    return (this as unknown as { $socket: FluiddSocket }).$socket
+  }
+
+  async homeZ (): Promise<void> {
+    if (this.homeDisabled) return
+
+    this.homeLoading = true
+    this.homeError = null
+
+    try {
+      await this.socket().emit('printer.gcode.script', {
+        dispatch: 'console/onGcodeScript',
+        params: {
+          script: 'G28 Z'
+        }
+      })
+      this.$emit('refresh')
+    } catch (error: unknown) {
+      this.homeError = error instanceof Error
+        ? `Homing Z не выполнен: ${error.message}`
+        : 'Homing Z не выполнен.'
+    } finally {
+      this.homeLoading = false
+    }
   }
 }
 </script>
