@@ -1,9 +1,10 @@
 import { shallowMount } from '@vue/test-utils'
+import type { Ad5xZCalibrationSnapshot } from '@/ad5x/api/types'
 import ZCalibrationStatusCard from '../ZCalibrationStatusCard.vue'
 
-function snapshot () {
+function snapshot (): Ad5xZCalibrationSnapshot {
   return {
-    api_version: '1.0' as const,
+    api_version: '1.0',
     module_version: '0.1.3',
     revision: 8,
     module: {

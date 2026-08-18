@@ -148,8 +148,8 @@ describe('Ad5xApiClient', () => {
 
   it('keeps schema 1.1 compatible when additive validity fields are absent', async () => {
     const payload = zSnapshot()
-    delete payload.module.state.runtime.effective_valid
-    delete payload.module.state.provenance.reported_homing_origin_z
+    delete (payload.module.state.runtime as { effective_valid?: boolean }).effective_valid
+    delete (payload.module.state.provenance as { reported_homing_origin_z?: number | null }).reported_homing_origin_z
     const client = new Ad5xApiClient({
       emit: vi.fn().mockResolvedValue(payload)
     })
