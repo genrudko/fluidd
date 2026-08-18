@@ -82,6 +82,8 @@ describe('ZCalibrationStatusCard', () => {
       propsData: { snapshot: snapshot() }
     })
 
+    expect(wrapper.find('z-calibration-actions-stub').exists()).toBe(true)
+    expect(wrapper.find('z-calibration-mesh-preview-stub').exists()).toBe(true)
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('Система Z-калибровки готова')
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('после homing Z')
     expect(wrapper.find('[data-test="z-effective-offset"]').text()).toBe('—')

@@ -3,28 +3,23 @@
     data-test="z-calibration-card"
     outlined
   >
-    <v-card-title class="d-flex align-center">
+    <v-card-title>
       <div>
         <div class="text-h6">
           Центр калибровки Z
         </div>
         <div class="text-caption text--secondary">
-          Z-Mod выполняет физический Auto-Z. Plugins AD5X объясняет состояние и следит за безопасными границами.
+          Z-Mod выполняет физический Auto-Z. Plugins AD5X объясняет состояние, даёт безопасные действия и следит за границами.
         </div>
       </div>
-      <v-spacer />
-      <v-btn
-        data-test="z-refresh"
-        :loading="loading"
-        outlined
-        small
-        @click="$emit('reconcile')"
-      >
-        Обновить
-      </v-btn>
     </v-card-title>
 
     <v-card-text>
+      <z-calibration-actions
+        :refresh-loading="loading"
+        @refresh="$emit('reconcile')"
+      />
+
       <v-alert
         data-test="z-ready-state"
         :type="ready ? 'success' : 'warning'"
@@ -132,6 +127,8 @@
           </v-card>
         </v-col>
       </v-row>
+
+      <z-calibration-mesh-preview />
 
       <v-simple-table
         class="mt-3"
@@ -259,8 +256,15 @@
 import Vue from 'vue'
 import { Component, Prop } from 'vue-property-decorator'
 import type { Ad5xZCalibrationSnapshot } from '@/ad5x/api/types'
+import ZCalibrationActions from '@/ad5x/components/ZCalibrationActions.vue'
+import ZCalibrationMeshPreview from '@/ad5x/components/ZCalibrationMeshPreview.vue'
 
-@Component({})
+@Component({
+  components: {
+    ZCalibrationActions,
+    ZCalibrationMeshPreview
+  }
+})
 export default class ZCalibrationStatusCard extends Vue {
   @Prop({ required: true }) readonly snapshot!: Ad5xZCalibrationSnapshot
   @Prop({ default: false }) readonly loading!: boolean
