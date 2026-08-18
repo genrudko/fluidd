@@ -230,13 +230,16 @@ export default class Ad5xShell extends Vue {
   }
 
   async created (): Promise<void> {
-    if (this.supportsSharedBackend) {
-      await initializeAd5x(this.$store, true, this.apiClient())
-    } else {
-      await initializeAd5x(this.$store, false)
-    }
+    const sharedInitialization = this.supportsSharedBackend
+      ? initializeAd5x(this.$store, true, this.apiClient())
+      : initializeAd5x(this.$store, false)
 
-    await this.loadZCalibration()
+    const zCalibrationInitialization = this.loadZCalibration()
+
+    await Promise.all([
+      sharedInitialization,
+      zCalibrationInitialization
+    ])
   }
 }
 </script>
