@@ -57,8 +57,14 @@
       </v-alert>
 
       <v-row dense>
-        <v-col cols="12" md="4">
-          <v-card outlined class="fill-height">
+        <v-col
+          cols="12"
+          md="4"
+        >
+          <v-card
+            class="fill-height"
+            outlined
+          >
             <v-card-subtitle>Итоговый Z-offset Klipper</v-card-subtitle>
             <v-card-text>
               <div
@@ -74,8 +80,14 @@
           </v-card>
         </v-col>
 
-        <v-col cols="12" md="4">
-          <v-card outlined class="fill-height">
+        <v-col
+          cols="12"
+          md="4"
+        >
+          <v-card
+            class="fill-height"
+            outlined
+          >
             <v-card-subtitle>Auto-Z текущего запуска</v-card-subtitle>
             <v-card-text>
               <div
@@ -91,8 +103,14 @@
           </v-card>
         </v-col>
 
-        <v-col cols="12" md="4">
-          <v-card outlined class="fill-height">
+        <v-col
+          cols="12"
+          md="4"
+        >
+          <v-card
+            class="fill-height"
+            outlined
+          >
             <v-card-subtitle>Пользовательская коррекция</v-card-subtitle>
             <v-card-text>
               <div
