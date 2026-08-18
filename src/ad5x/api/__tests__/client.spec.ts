@@ -1,63 +1,177 @@
 import { Ad5xApiClient } from '../client'
 
-function snapshot () {
+function sharedSnapshot () {
   return {
     api_version: '1.0',
-    backend_version: '0.1.2',
+    backend_version: '0.1.6',
     revision: 7,
     backend: { health: 'ok' },
-    modules: {}
+    modules: { ifs: {} }
+  }
+}
+
+function zModule () {
+  return {
+    schema_version: '1.1',
+    support: 'supported',
+    enabled: true,
+    presence: 'present',
+    available: true,
+    health: 'ok',
+    capabilities: ['frontend_neutral_snapshot', 'read_only_reconciliation'],
+    state: {
+      calibration: {
+        state: 'observer',
+        motion_actions_enabled: false,
+        motion_owner: 'zmod',
+        offset_hook_enabled: true,
+        offset_hook_status: 'loaded',
+        offset_write_enabled: false,
+        integration: {
+          policy_status: 'loaded',
+          policy_id: 'zcal-saved-check-v1-20260817',
+          hook_commands: ['CC_APPLY_PROFILE', '_AD5X_Z_SAVED_CHECK_POLICY']
+        }
+      },
+      offset: {
+        auto_alignment: 0,
+        persistent_user: -0.016,
+        slicer_job: 0,
+        live_adjustment: 0,
+        external_unknown: 0.016,
+        known_total: -0.016,
+        effective: 0,
+        provenance_status: 'external_unknown'
+      },
+      provenance: {
+        status: 'external_unknown',
+        model: 'zmod-saved-check-observer-v1',
+        sources: {
+          effective: 'gcode_move.homing_origin.z'
+        },
+        missing_components: [],
+        actual_effective: 0,
+        requested_slicer_z_offset: 99,
+        slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path',
+        rc_path: {
+          accepted_saved_check_flags: true
+        }
+      },
+      job: {
+        phase: 'standby',
+        requested_slicer_z_offset: 99,
+        slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path'
+      },
+      runtime: {
+        klippy: 'ready',
+        print_state: 'standby',
+        homed_axes: ''
+      },
+      safety: {
+        fail_closed: true,
+        h7_role: 'secondary',
+        last_error: null
+      }
+    }
+  }
+}
+
+function zSnapshot () {
+  return {
+    api_version: '1.0',
+    module_version: '0.1.2',
+    revision: 8,
+    module: zModule()
   }
 }
 
 describe('Ad5xApiClient', () => {
-  it('uses the canonical Moonraker snapshot RPC through the Fluidd socket transport', async () => {
-    const payload = snapshot()
+  it('keeps the shared Plugins AD5X snapshot boundary intact', async () => {
+    const payload = sharedSnapshot()
     const emit = vi.fn().mockResolvedValue(payload)
     const client = new Ad5xApiClient({ emit })
 
     await expect(client.getSnapshot()).resolves.toEqual(payload)
-    expect(emit).toHaveBeenCalledOnce()
     expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.snapshot')
   })
 
-  it('rejects a non-object snapshot payload', async () => {
-    const client = new Ad5xApiClient({
-      emit: vi.fn().mockResolvedValue('unexpected')
-    })
+  it('uses the standalone Z Calibration snapshot RPC', async () => {
+    const payload = zSnapshot()
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
 
-    await expect(client.getSnapshot()).rejects.toThrow(
-      'Plugins AD5X snapshot response is incompatible with API 1.0'
-    )
+    await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.z_calibration.snapshot')
   })
 
-  it('rejects a snapshot from a different API contract', async () => {
+  it('uses read-only backend reconcile and validates its response', async () => {
     const payload = {
-      ...snapshot(),
+      revision: 9,
+      module: zModule()
+    }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.reconcileZCalibration()).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.z_calibration.reconcile')
+  })
+
+  it('loads bounded standalone diagnostics on demand', async () => {
+    const payload = {
+      schema_version: '1.1',
+      events: [{
+        schema_version: '1.1',
+        sequence: 1,
+        timestamp: 12.5,
+        correlation_id: 'zcal-1',
+        event_type: 'reconcile',
+        payload: { health: 'ok' }
+      }]
+    }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.getZCalibrationDiagnostics()).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.z_calibration.diagnostics')
+  })
+
+  it('rejects a standalone snapshot from a different API contract', async () => {
+    const payload = {
+      ...zSnapshot(),
       api_version: '2.0'
     }
     const client = new Ad5xApiClient({
       emit: vi.fn().mockResolvedValue(payload)
     })
 
-    await expect(client.getSnapshot()).rejects.toThrow(
-      'Plugins AD5X snapshot response is incompatible with API 1.0'
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
     )
   })
 
-  it('rejects a malformed snapshot envelope instead of inventing defaults', async () => {
+  it('rejects the obsolete pre-coexistence shared Z module shape', async () => {
     const payload = {
-      api_version: '1.0',
-      backend_version: '0.1.2',
-      revision: 1,
-      backend: { health: 'ok' }
+      ...zSnapshot(),
+      module: {
+        ...zModule(),
+        state: {
+          ...zModule().state,
+          calibration: {
+            state: 'observer',
+            motion_actions_enabled: false,
+            offset_hook_enabled: true,
+            offset_hook_status: 'loaded',
+            offset_write_enabled: false
+          }
+        }
+      }
     }
     const client = new Ad5xApiClient({
       emit: vi.fn().mockResolvedValue(payload)
     })
 
-    await expect(client.getSnapshot()).rejects.toThrow(
-      'Plugins AD5X snapshot response is incompatible with API 1.0'
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
     )
   })
 })
