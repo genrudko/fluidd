@@ -280,6 +280,7 @@ type FluiddSocket = {
 }
 
 type SemanticAction = 'check' | 'mesh' | 'restore'
+type AppFileWithFilamentWeights = AppFileWithMeta & { filament_weights?: number[] }
 
 @Component({})
 export default class ZCalibrationActions extends Vue {
@@ -321,8 +322,14 @@ export default class ZCalibrationActions extends Vue {
   }
 
   get materialText (): string {
-    const types = this.currentFile?.filament_type
+    const file = this.currentFile as AppFileWithFilamentWeights | undefined
+    const types = file?.filament_type
     if (Array.isArray(types) && types.length > 0) {
+      const weights = file?.filament_weights
+      if (Array.isArray(weights) && weights.length === types.length) {
+        const used = types.filter((type, index) => Boolean(type) && Number(weights[index]) > 0)
+        if (used.length > 0) return [...new Set(used)].join(' + ')
+      }
       return [...new Set(types.filter(Boolean))].join(' + ')
     }
     return this.currentFile ? 'тип не указан в metadata' : 'задание ещё не выбрано'
@@ -419,7 +426,7 @@ export default class ZCalibrationActions extends Vue {
     this.actionSuccess = null
 
     try {
-      await this.runGcode(`AD5X_Z_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
+      await this.runGcode(`ADZ_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
       this.actionSuccess = enabled
         ? 'Автоматическая Z-калибровка перед печатью включена.'
         : 'Автоматическая Z-калибровка перед печатью выключена.'
@@ -459,7 +466,7 @@ export default class ZCalibrationActions extends Vue {
     this.actionSuccess = null
 
     try {
-      await this.runGcode(this.semanticScript('AD5X_Z_CHECK'))
+      await this.runGcode(this.semanticScript('ADZ_CHECK'))
       this.actionSuccess = 'Проверка Z завершена. Состояние обновлено.'
       this.$emit('refresh')
     } catch (error: unknown) {
@@ -478,7 +485,7 @@ export default class ZCalibrationActions extends Vue {
     this.actionSuccess = null
 
     try {
-      await this.runGcode(this.semanticScript('AD5X_Z_BUILD_RUNTIME_MESH'))
+      await this.runGcode(this.semanticScript('ADZ_BUILD_RUNTIME_MESH'))
       this.actionSuccess = 'Временная карта построена. Для печати активной снова оставлена сохранённая auto.'
       this.$emit('refresh')
     } catch (error: unknown) {
@@ -496,7 +503,7 @@ export default class ZCalibrationActions extends Vue {
     this.actionSuccess = null
 
     try {
-      await this.runGcode('AD5X_Z_RESTORE_AUTO')
+      await this.runGcode('ADZ_RESTORE_AUTO')
       this.actionSuccess = 'Сохранённая карта auto восстановлена и проверена.'
       this.$emit('refresh')
     } catch (error: unknown) {
