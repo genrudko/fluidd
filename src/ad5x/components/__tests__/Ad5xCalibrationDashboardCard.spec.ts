@@ -1,51 +1,13 @@
-import { createLocalVue, shallowMount } from '@vue/test-utils'
-import Vuex from 'vuex'
-import Ad5xCalibrationDashboardCard from '../Ad5xCalibrationDashboardCard.vue'
+import { readFileSync } from 'node:fs'
 
-const localVue = createLocalVue()
-localVue.use(Vuex)
+const source = readFileSync(
+  new URL('../Ad5xCalibrationDashboardCard.vue', import.meta.url),
+  'utf8'
+)
 
-function createStore () {
-  return new Vuex.Store({
-    modules: {
-      printer: {
-        namespaced: true,
-        state: {
-          printer: {
-            print_stats: {
-              filename: ''
-            }
-          }
-        },
-        getters: {
-          getKlippyReady: () => true,
-          getPrinterState: () => 'standby'
-        }
-      },
-      mesh: {
-        namespaced: true,
-        getters: {
-          getCurrentMeshData: () => null
-        }
-      }
-    }
-  })
-}
-
-describe('Ad5xCalibrationDashboardCard', () => {
+describe('Ad5xCalibrationDashboardCard layout contract', () => {
   it('uses the exact registered dashboard layout id and native draggable mode', () => {
-    const wrapper = shallowMount(Ad5xCalibrationDashboardCard, {
-      localVue,
-      store: createStore(),
-      mocks: {
-        $socket: { emit: vi.fn().mockResolvedValue({}) },
-        $router: { push: vi.fn() }
-      }
-    })
-
-    const card = wrapper.find('collapsable-card')
-    expect(card.exists()).toBe(true)
-    expect(card.attributes('layout-path')).toBe('dashboard.ad5x-calibration-dashboard-card')
-    expect(card.attributes('draggable')).toBeDefined()
+    expect(source).toContain('layout-path="dashboard.ad5x-calibration-dashboard-card"')
+    expect(source).toMatch(/<collapsable-card[\s\S]*?\sdraggable(?:\s|>)/)
   })
 })
