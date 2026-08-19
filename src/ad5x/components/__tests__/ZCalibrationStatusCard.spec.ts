@@ -52,6 +52,8 @@ function snapshot (): Ad5xZCalibrationSnapshot {
           requested_slicer_z_offset: null,
           slicer_z_offset_effect: 'ignored_by_zmod_global_offset_path',
           rc_path: {
+            mesh_test: 3,
+            active_mesh_profile: 'auto',
             accepted_saved_check_flags: true
           }
         },
@@ -83,6 +85,7 @@ describe('ZCalibrationStatusCard', () => {
     })
 
     expect(wrapper.find('z-calibration-actions-stub').exists()).toBe(true)
+    expect(wrapper.find('z-calibration-actions-stub').attributes('preprintmode')).toBe('3')
     expect(wrapper.find('z-calibration-mesh-preview-stub').exists()).toBe(true)
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('Система Z-калибровки готова')
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('после homing Z')
@@ -90,6 +93,7 @@ describe('ZCalibrationStatusCard', () => {
     expect(wrapper.find('[data-test="z-auto-alignment"]').text()).toBe('0.000 mm')
     expect(wrapper.find('[data-test="z-persistent-user"]').text()).toBe('-0.016 mm')
     expect(wrapper.find('[data-test="z-klippy-state"]').text()).toContain('homing Z не выполнен')
+    expect(wrapper.find('[data-test="z-preprint-state"]').text()).toBe('включена · saved mesh + Z-check')
     expect(wrapper.find('[data-test="z-provenance"]').text()).toBe('станет доступен после homing Z')
     expect(wrapper.find('[data-test="external-unknown-warning"]').exists()).toBe(false)
   })
@@ -126,9 +130,26 @@ describe('ZCalibrationStatusCard', () => {
       propsData: { snapshot: snapshot() }
     })
 
-    expect(wrapper.find('[data-test="z-hook-state"]').text()).toBe('активна')
+    expect(wrapper.find('[data-test="z-hook-state"]').text()).toBe('активен')
     expect(wrapper.find('[data-test="z-motion-owner"]').text()).toBe('Z-Mod')
     expect(wrapper.find('[data-test="z-policy-id"]').text()).toBe('zcal-saved-check-v1-20260817')
+  })
+
+  it('renders the pre-print setting as disabled without treating the safety hook as broken', () => {
+    const payload = snapshot()
+    payload.module.state.provenance.rc_path = {
+      ...payload.module.state.provenance.rc_path,
+      mesh_test: 0,
+      accepted_saved_check_flags: false
+    }
+
+    const wrapper = shallowMount(ZCalibrationStatusCard, {
+      propsData: { snapshot: payload }
+    })
+
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('выключена пользователем')
+    expect(wrapper.find('[data-test="z-preprint-state"]').text()).toBe('выключена')
+    expect(wrapper.find('[data-test="z-hook-state"]').text()).toBe('активен')
   })
 
   it('marks the state as requiring attention when frontend safety invariants are not met', () => {
