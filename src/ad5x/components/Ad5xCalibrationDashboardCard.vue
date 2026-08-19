@@ -156,7 +156,10 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     const mesh = this.$store.getters['mesh/getCurrentMeshData'] as any
     const matrix = mesh?.probed_matrix ?? mesh?.mesh_matrix
     const range = matrix?.range
-    const profile = this.snapshot?.module.state.provenance.rc_path?.active_mesh_profile
+    const rawProfile = this.snapshot?.module.state.provenance.rc_path?.active_mesh_profile
+    const profile = typeof rawProfile === 'string' && rawProfile.length > 0
+      ? rawProfile
+      : null
 
     if (typeof range === 'number') {
       return `${profile || 'активная'} · Δ ${range.toFixed(3)} mm`
@@ -200,8 +203,8 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     }
   }
 
-  async created (): Promise<void> {
-    await this.refresh()
+  created (): void {
+    this.refresh().catch(() => undefined)
   }
 }
 </script>
