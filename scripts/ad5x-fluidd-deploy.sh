@@ -139,8 +139,35 @@ verify_live_http(){
     [ "$SERVED_SHA" = "$DISK_SHA" ]
 }
 
-stop_http(){ "$HTTP_SERVICE" stop >/dev/null 2>&1; }
-start_http(){ "$HTTP_SERVICE" start >/dev/null 2>&1; }
+http_process_running(){
+    ps 2>/dev/null | grep -q '[z]mod_httpd'
+}
+
+stop_http(){
+    "$HTTP_SERVICE" stop >/dev/null 2>&1 || true
+    N=0
+    while [ "$N" -lt 10 ]; do
+        if ! http_process_running; then
+            return 0
+        fi
+        N=$((N + 1))
+        sleep 1
+    done
+    return 1
+}
+
+start_http(){
+    "$HTTP_SERVICE" start >/dev/null 2>&1 || true
+    N=0
+    while [ "$N" -lt 10 ]; do
+        if http_process_running; then
+            return 0
+        fi
+        N=$((N + 1))
+        sleep 1
+    done
+    return 1
+}
 
 rollback_swap(){
     OLD="$1"

@@ -17,6 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Test AD5X git deploy lifecycle
+        run: |
+          /bin/sh scripts/test-ad5x-fluidd-deploy.sh
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
