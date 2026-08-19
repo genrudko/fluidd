@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const source = readFileSync(
-  new URL('../Ad5xCalibrationDashboardCard.vue', import.meta.url),
+  resolve(process.cwd(), 'src/ad5x/components/Ad5xCalibrationDashboardCard.vue'),
   'utf8'
 )
 
