@@ -16,6 +16,7 @@
 
     <v-card-text>
       <z-calibration-actions
+        :preprint-mode="preprintMode"
         :refresh-loading="loading"
         @refresh="$emit('reconcile')"
       />
@@ -142,7 +143,13 @@
             </td>
           </tr>
           <tr>
-            <th>Проверка Z перед печатью</th>
+            <th>Автокалибровка перед печатью</th>
+            <td data-test="z-preprint-state">
+              {{ preprintModeLabel }}
+            </td>
+          </tr>
+          <tr>
+            <th>Защитный hook перед печатью</th>
             <td data-test="z-hook-state">
               {{ hookLabel }}
             </td>
@@ -284,6 +291,18 @@ export default class ZCalibrationStatusCard extends Vue {
     return this.module.state.provenance.reported_homing_origin_z ?? null
   }
 
+  get preprintMode (): number | null {
+    const value = this.module.state.provenance.rc_path?.mesh_test
+    return typeof value === 'number' ? value : null
+  }
+
+  get preprintModeLabel (): string {
+    if (this.preprintMode === 3) return 'включена · saved mesh + Z-check'
+    if (this.preprintMode === 0) return 'выключена'
+    if (this.preprintMode === null) return 'состояние не определено'
+    return `нестандартный режим Z-Mod MESH_TEST=${this.preprintMode}`
+  }
+
   get ready (): boolean {
     const calibration = this.module.state.calibration
 
@@ -304,6 +323,10 @@ export default class ZCalibrationStatusCard extends Vue {
   }
 
   get readinessMessage (): string {
+    if (this.ready && this.preprintMode === 0) {
+      return 'Защитный контур активен. Автоматическая Z-калибровка перед печатью выключена пользователем.'
+    }
+
     if (this.ready && !this.effectiveValid) {
       return 'Защитный контур активен. Итоговый Z-offset станет доступен после homing Z.'
     }
@@ -363,10 +386,10 @@ export default class ZCalibrationStatusCard extends Vue {
     const calibration = this.module.state.calibration
 
     if (calibration.offset_hook_status === 'loaded' && calibration.integration.policy_status === 'loaded') {
-      return 'активна'
+      return 'активен'
     }
 
-    return `не подтверждена (hook=${calibration.offset_hook_status}; policy=${calibration.integration.policy_status})`
+    return `не подтверждён (hook=${calibration.offset_hook_status}; policy=${calibration.integration.policy_status})`
   }
 
   get motionOwnerLabel (): string {

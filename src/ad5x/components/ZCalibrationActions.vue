@@ -11,6 +11,42 @@
     <v-card-text class="pt-0">
       <v-row dense>
         <v-col
+          cols="12"
+          md="5"
+        >
+          <v-switch
+            :input-value="preprintEnabled"
+            class="mt-0"
+            data-test="z-preprint-toggle"
+            dense
+            :disabled="preprintToggleDisabled"
+            hide-details="auto"
+            label="Запуск калибровки перед печатью"
+            @change="setPreprint"
+          />
+          <div
+            class="text-caption text--secondary mt-1"
+            data-test="z-preprint-mode"
+          >
+            {{ preprintModeLabel }}
+          </div>
+        </v-col>
+
+        <v-col
+          class="d-flex align-center"
+          cols="12"
+          md="7"
+        >
+          <div class="text-caption text--secondary">
+            Порядок перед печатью: сначала определяется окончательная карта стола, затем выполняется Z-коррекция относительно неё. Для сохранённой auto используется Z-check; если для задания уже строится свежая карта, повторный single-point probe не запускается.
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-divider class="my-3" />
+
+      <v-row dense>
+        <v-col
           cols="6"
           sm="3"
         >
@@ -46,7 +82,7 @@
           sm="6"
         >
           <div class="text-caption text--secondary">
-            Температуры видимы и редактируются перед запуском. Backend дополнительно проверяет их по конфигурации принтера; скрытые 245/80 не используются.
+            Эти поля относятся только к ручным действиям ниже. Автоматическая калибровка перед печатью использует температуры текущего START_PRINT, то есть выбранного filament-профиля, а не скрытые фиксированные 245/80.
           </div>
         </v-col>
       </v-row>
@@ -74,7 +110,7 @@
           class="me-2 mb-2"
           color="primary"
           data-test="z-check-action"
-          :disabled="semanticActionDisabled"
+          :disabled="checkActionDisabled"
           :loading="actionLoading === 'check'"
           small
           @click="checkZ"
@@ -121,6 +157,17 @@
       <div class="text-caption text--secondary">
         `Проверить Z` и `Построить карту` вызывают только semantic macros Plugins AD5X; физический probe/contact/mesh выполняет Z-Mod. Полная калибровка будет включена после productization обновления trusted reference.
       </div>
+
+      <v-alert
+        v-if="preprintMode !== 3"
+        class="mt-3 mb-0"
+        data-test="z-check-mode-info"
+        dense
+        text
+        type="info"
+      >
+        Ручная «Проверить Z» доступна в управляемом режиме MESH_TEST=3. Включите «Запуск калибровки перед печатью», если нужна ручная проверка сохранённой карты.
+      </v-alert>
 
       <v-alert
         v-if="!temperatureValid"
@@ -189,9 +236,11 @@ type SemanticAction = 'check' | 'mesh' | 'restore'
 @Component({})
 export default class ZCalibrationActions extends Vue {
   @Prop({ default: false }) readonly refreshLoading!: boolean
+  @Prop({ default: null }) readonly preprintMode!: number | null
 
   extruderTemp = 220
   bedTemp = 60
+  preprintLoading = false
   homeLoading = false
   homeError: string | null = null
   actionLoading: SemanticAction | null = null
@@ -212,6 +261,18 @@ export default class ZCalibrationActions extends Vue {
     return typeof getHomedAxes === 'function' && getHomedAxes('z')
   }
 
+  get preprintEnabled (): boolean {
+    return this.preprintMode === 3
+  }
+
+  get preprintModeLabel (): string {
+    if (this.preprintLoading) return 'Сохраняю настройку…'
+    if (this.preprintMode === 3) return 'Включено · Z-Mod MESH_TEST=3 · saved mesh + Z-check'
+    if (this.preprintMode === 0) return 'Выключено · Z-Mod MESH_TEST=0'
+    if (this.preprintMode === null) return 'Текущее состояние MESH_TEST не определено'
+    return `Текущий режим Z-Mod MESH_TEST=${this.preprintMode}; переключатель приведёт его к управляемому 3/0`
+  }
+
   get temperatureValid (): boolean {
     return Number.isFinite(Number(this.extruderTemp)) &&
       Number.isFinite(Number(this.bedTemp)) &&
@@ -220,7 +281,11 @@ export default class ZCalibrationActions extends Vue {
   }
 
   get anyActionLoading (): boolean {
-    return this.homeLoading || this.actionLoading !== null
+    return this.preprintLoading || this.homeLoading || this.actionLoading !== null
+  }
+
+  get preprintToggleDisabled (): boolean {
+    return !this.klippyReady || this.printerBusy || this.anyActionLoading
   }
 
   get homeDisabled (): boolean {
@@ -232,6 +297,10 @@ export default class ZCalibrationActions extends Vue {
       this.printerBusy ||
       this.anyActionLoading ||
       !this.temperatureValid
+  }
+
+  get checkActionDisabled (): boolean {
+    return this.semanticActionDisabled || this.preprintMode !== 3
   }
 
   get restoreDisabled (): boolean {
@@ -263,6 +332,27 @@ export default class ZCalibrationActions extends Vue {
       : `${label} не выполнено.`
   }
 
+  async setPreprint (enabled: boolean): Promise<void> {
+    if (this.preprintToggleDisabled) return
+
+    this.preprintLoading = true
+    this.homeError = null
+    this.actionError = null
+    this.actionSuccess = null
+
+    try {
+      await this.runGcode(`AD5X_Z_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
+      this.actionSuccess = enabled
+        ? 'Автоматическая Z-калибровка перед печатью включена.'
+        : 'Автоматическая Z-калибровка перед печатью выключена.'
+      this.$emit('refresh')
+    } catch (error: unknown) {
+      this.actionError = this.errorMessage('Изменение pre-print калибровки', error)
+    } finally {
+      this.preprintLoading = false
+    }
+  }
+
   async homeZ (): Promise<void> {
     if (this.homeDisabled) return
 
@@ -283,7 +373,7 @@ export default class ZCalibrationActions extends Vue {
   }
 
   async checkZ (): Promise<void> {
-    if (this.semanticActionDisabled) return
+    if (this.checkActionDisabled) return
 
     this.actionLoading = 'check'
     this.actionError = null

@@ -20,11 +20,12 @@ function createStore (state = 'standby') {
   })
 }
 
-function mountActions (state = 'standby') {
+function mountActions (state = 'standby', preprintMode: number | null = 3) {
   const emit = vi.fn().mockResolvedValue({})
   const wrapper = shallowMount(ZCalibrationActions, {
     localVue,
     store: createStore(state),
+    propsData: { preprintMode },
     mocks: {
       $socket: { emit }
     }
@@ -42,6 +43,32 @@ describe('ZCalibrationActions', () => {
       params: { script: 'G28 Z' }
     })
     expect(wrapper.emitted('refresh')).toBeTruthy()
+  })
+
+  it('persists the pre-print calibration setting only through the Plugins AD5X semantic macro', async () => {
+    const { wrapper, emit } = mountActions()
+    const vm = wrapper.vm as any
+
+    await vm.setPreprint(false)
+
+    expect(emit).toHaveBeenCalledWith('printer.gcode.script', {
+      dispatch: 'console/onGcodeScript',
+      params: { script: 'AD5X_Z_SET_PREPRINT ENABLED=0' }
+    })
+    expect(emit.mock.calls[0][1].params.script).not.toContain('SAVE_VARIABLE')
+    expect(wrapper.emitted('refresh')).toBeTruthy()
+  })
+
+  it('reflects managed pre-print modes and disables manual Z check when pre-print mode is off', async () => {
+    const { wrapper, emit } = mountActions('standby', 0)
+    const vm = wrapper.vm as any
+
+    expect(vm.preprintEnabled).toBe(false)
+    expect(vm.preprintModeLabel).toContain('MESH_TEST=0')
+    expect(vm.checkActionDisabled).toBe(true)
+
+    await vm.checkZ()
+    expect(emit).not.toHaveBeenCalled()
   })
 
   it('calls only the Plugins AD5X semantic macro for Z check with visible temperatures', async () => {
@@ -87,10 +114,11 @@ describe('ZCalibrationActions', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
-  it('blocks homing and semantic actions while the printer is printing', () => {
+  it('blocks homing, setting changes and semantic actions while the printer is printing', () => {
     const { wrapper } = mountActions('printing')
     const vm = wrapper.vm as any
 
+    expect(vm.preprintToggleDisabled).toBe(true)
     expect(vm.homeDisabled).toBe(true)
     expect(vm.semanticActionDisabled).toBe(true)
   })
@@ -102,6 +130,7 @@ describe('ZCalibrationActions', () => {
     const wrapper = shallowMount(ZCalibrationActions, {
       localVue,
       store: createStore(),
+      propsData: { preprintMode: 3 },
       mocks: { $socket: { emit } }
     })
     const vm = wrapper.vm as any
