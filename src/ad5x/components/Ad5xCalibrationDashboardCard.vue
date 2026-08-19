@@ -184,6 +184,7 @@ import type {
 import type { AppFileWithMeta } from '@/store/files/types'
 
 type DashboardAction = 'home' | 'preprint'
+type AppFileWithFilamentWeights = AppFileWithMeta & { filament_weights?: number[] }
 
 type FluiddSocket = Ad5xSocketTransport & {
   emit: (
@@ -273,8 +274,14 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
   }
 
   get materialText (): string {
-    const types = this.currentFile?.filament_type
+    const file = this.currentFile as AppFileWithFilamentWeights | undefined
+    const types = file?.filament_type
     if (Array.isArray(types) && types.length > 0) {
+      const weights = file?.filament_weights
+      if (Array.isArray(weights) && weights.length === types.length) {
+        const used = types.filter((type, index) => Boolean(type) && Number(weights[index]) > 0)
+        if (used.length > 0) return [...new Set(used)].join(' + ')
+      }
       return [...new Set(types.filter(Boolean))].join(' + ')
     }
     return 'нет metadata текущего задания'
@@ -313,7 +320,7 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     this.actionLoading = 'preprint'
     this.actionError = null
     try {
-      await this.runGcode(`AD5X_Z_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
+      await this.runGcode(`ADZ_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
       await this.refresh()
     } catch (error: unknown) {
       this.actionError = error instanceof Error
