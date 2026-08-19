@@ -5,7 +5,7 @@
     outlined
   >
     <v-card-subtitle class="pb-2">
-      Действия
+      Перед печатью
     </v-card-subtitle>
 
     <v-card-text class="pt-0">
@@ -33,17 +33,64 @@
         </v-col>
 
         <v-col
-          class="d-flex align-center"
           cols="12"
           md="7"
         >
-          <div class="text-caption text--secondary">
-            Порядок перед печатью: сначала определяется окончательная карта стола, затем выполняется Z-коррекция относительно неё. Для сохранённой auto используется Z-check; если для задания уже строится свежая карта, повторный single-point probe не запускается.
+          <div class="ad5x-preprint-context">
+            <div>
+              <span class="text-caption text--secondary">Материал задания</span>
+              <div
+                class="text-body-2 font-weight-medium"
+                data-test="z-preprint-material"
+              >
+                {{ materialText }}
+              </div>
+            </div>
+            <div>
+              <span class="text-caption text--secondary">Температуры Auto-Z</span>
+              <div
+                class="text-body-2 font-weight-medium"
+                data-test="z-preprint-temperature-source"
+              >
+                из текущего START_PRINT
+              </div>
+            </div>
+            <div>
+              <span class="text-caption text--secondary">Карта перед печатью</span>
+              <div
+                class="text-body-2 font-weight-medium"
+                data-test="z-preprint-mesh-policy"
+              >
+                {{ meshPolicyLabel }}
+              </div>
+            </div>
           </div>
         </v-col>
       </v-row>
 
+      <v-alert
+        class="mt-3 mb-0"
+        dense
+        text
+        type="info"
+      >
+        <strong>Порядок:</strong>
+        1) учитывается штатный выбор новой карты перед печатью;
+        2) определяется окончательная mesh;
+        3) Z-коррекция выполняется уже относительно неё;
+        4) начинается печать.
+        Если свежая карта уже построена для задания, второй single-point probe не запускается.
+      </v-alert>
+
+      <div class="text-caption text--secondary mt-2">
+        Тип материала берётся из metadata текущего G-code, когда она доступна. Температуры не подменяются таблицей PLA/PETG/ABS: для автоматического пути используются фактические температуры текущего START_PRINT, то есть выбранного filament-профиля.
+      </div>
+
       <v-divider class="my-3" />
+
+      <div class="text-subtitle-2 mb-2">
+        Ручные действия
+      </div>
 
       <v-row dense>
         <v-col
@@ -82,7 +129,7 @@
           sm="6"
         >
           <div class="text-caption text--secondary">
-            Эти поля относятся только к ручным действиям ниже. Автоматическая калибровка перед печатью использует температуры текущего START_PRINT, то есть выбранного filament-профиля, а не скрытые фиксированные 245/80.
+            Эти температуры используются только при ручных «Проверить Z» и «Построить карту». Они не влияют на автоматическую pre-print калибровку.
           </div>
         </v-col>
       </v-row>
@@ -155,7 +202,7 @@
       </div>
 
       <div class="text-caption text--secondary">
-        `Проверить Z` и `Построить карту` вызывают только semantic macros Plugins AD5X; физический probe/contact/mesh выполняет Z-Mod. Полная калибровка будет включена после productization обновления trusted reference.
+        «Проверить Z» и «Построить карту» вызывают только semantic macros Plugins AD5X; физический probe/contact/mesh выполняет Z-Mod. Полная калибровка будет включена после productization обновления trusted reference.
       </div>
 
       <v-alert
@@ -220,6 +267,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Component, Prop } from 'vue-property-decorator'
+import type { AppFileWithMeta } from '@/store/files/types'
 
 type FluiddSocket = {
   emit: (
@@ -237,6 +285,7 @@ type SemanticAction = 'check' | 'mesh' | 'restore'
 export default class ZCalibrationActions extends Vue {
   @Prop({ default: false }) readonly refreshLoading!: boolean
   @Prop({ default: null }) readonly preprintMode!: number | null
+  @Prop({ default: () => ({}) }) readonly rcPath!: Record<string, unknown>
 
   extruderTemp = 220
   bedTemp = 60
@@ -259,6 +308,35 @@ export default class ZCalibrationActions extends Vue {
   get zHomed (): boolean {
     const getHomedAxes = this.$store.getters['printer/getHomedAxes'] as ((axes: string) => boolean) | undefined
     return typeof getHomedAxes === 'function' && getHomedAxes('z')
+  }
+
+  get currentFile (): AppFileWithMeta | undefined {
+    const filename = String(this.$store.state.printer?.printer?.print_stats?.filename || '')
+    if (!filename) return undefined
+
+    const parts = filename.split('/')
+    const name = parts.pop() || ''
+    const path = `gcodes/${parts.join('/')}`.replace(/\/$/, '')
+    return this.$store.getters['files/getFile'](path, name) as AppFileWithMeta | undefined
+  }
+
+  get materialText (): string {
+    const types = this.currentFile?.filament_type
+    if (Array.isArray(types) && types.length > 0) {
+      return [...new Set(types.filter(Boolean))].join(' + ')
+    }
+    return this.currentFile ? 'тип не указан в metadata' : 'задание ещё не выбрано'
+  }
+
+  get meshPolicyLabel (): string {
+    const forceLeveling = this.rcPath.force_leveling === true
+    const forceKamp = this.rcPath.force_kamp === true
+    const printLeveling = Number(this.rcPath.print_leveling || 0)
+
+    if (forceLeveling) return 'для задания принудительно строится новая карта'
+    if (forceKamp) return 'для задания строится новая KAMP-карта'
+    if (printLeveling !== 0) return 'для задания выбрана новая карта'
+    return 'следовать штатному выбору при запуске печати'
   }
 
   get preprintEnabled (): boolean {
@@ -429,3 +507,17 @@ export default class ZCalibrationActions extends Vue {
   }
 }
 </script>
+
+<style scoped>
+.ad5x-preprint-context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+@media (max-width: 959px) {
+  .ad5x-preprint-context {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
