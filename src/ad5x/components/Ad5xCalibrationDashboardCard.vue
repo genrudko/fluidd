@@ -2,9 +2,20 @@
   <collapsable-card
     title="Калибровка Z"
     icon="$bedMesh"
-    layout-path="dashboard.ad5x-calibration-card"
+    draggable
+    layout-path="dashboard.ad5x-calibration-dashboard-card"
   >
     <template #menu>
+      <app-btn
+        icon
+        data-test="ad5x-dashboard-refresh"
+        :disabled="loading || actionLoading"
+        @click="refresh"
+      >
+        <v-icon dense>
+          $refresh
+        </v-icon>
+      </app-btn>
       <app-btn
         icon
         data-test="ad5x-dashboard-open"
@@ -101,8 +112,61 @@
           </div>
         </div>
 
-        <div class="text-caption text--secondary mt-3">
-          Для автоматической калибровки используются температуры, разрешённые текущим START_PRINT; тип материала служит контекстом, а не скрытой заменой профиля слайсера.
+        <v-divider class="my-3" />
+
+        <div class="d-flex flex-wrap align-center">
+          <v-switch
+            :input-value="preprintEnabled"
+            class="mt-0 me-3 mb-2"
+            data-test="ad5x-dashboard-preprint-toggle"
+            dense
+            :disabled="controlsDisabled"
+            hide-details
+            label="Калибровка перед печатью"
+            @change="setPreprint"
+          />
+
+          <app-btn
+            class="me-2 mb-2"
+            color="primary"
+            data-test="ad5x-dashboard-home-z"
+            :disabled="controlsDisabled"
+            :loading="actionLoading === 'home'"
+            small
+            @click="homeZ"
+          >
+            <v-icon
+              left
+              small
+            >
+              $home
+            </v-icon>
+            Home Z
+          </app-btn>
+
+          <app-btn
+            class="mb-2"
+            data-test="ad5x-dashboard-open-center"
+            outlined
+            small
+            @click="$router.push({ name: 'ad5x' })"
+          >
+            Открыть центр
+          </app-btn>
+        </div>
+
+        <v-alert
+          v-if="actionError"
+          class="mt-1 mb-0"
+          dense
+          text
+          type="warning"
+        >
+          {{ actionError }}
+        </v-alert>
+
+        <div class="text-caption text--secondary mt-2">
+          Перед печатью сначала определяется окончательная карта стола, затем выполняется Z-коррекция. Температуры берутся из текущего START_PRINT выбранного filament-профиля.
         </div>
       </template>
     </v-card-text>
@@ -119,11 +183,25 @@ import type {
 } from '@/ad5x/api/types'
 import type { AppFileWithMeta } from '@/store/files/types'
 
+type DashboardAction = 'home' | 'preprint'
+
+type FluiddSocket = Ad5xSocketTransport & {
+  emit: (
+    method: string,
+    options?: {
+      dispatch?: string
+      params?: Record<string, unknown>
+    }
+  ) => Promise<unknown>
+}
+
 @Component({})
 export default class Ad5xCalibrationDashboardCard extends Vue {
   snapshot: Ad5xZCalibrationSnapshot | null = null
   loading = false
   error: string | null = null
+  actionLoading: DashboardAction | null = null
+  actionError: string | null = null
 
   get ready (): boolean {
     const state = this.snapshot?.module.state
@@ -135,6 +213,19 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     )
   }
 
+  get klippyReady (): boolean {
+    return Boolean(this.$store.getters['printer/getKlippyReady'])
+  }
+
+  get printerBusy (): boolean {
+    const state = String(this.$store.getters['printer/getPrinterState'] || '')
+    return state === 'printing' || state === 'paused' || state === 'busy'
+  }
+
+  get controlsDisabled (): boolean {
+    return !this.klippyReady || this.printerBusy || this.loading || this.actionLoading !== null
+  }
+
   get effectiveText (): string {
     const value = this.snapshot?.module.state.offset.effective
     return typeof value === 'number' ? `${value.toFixed(3)} mm` : '—'
@@ -143,6 +234,10 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
   get meshTestMode (): number | null {
     const value = this.snapshot?.module.state.provenance.rc_path?.mesh_test
     return typeof value === 'number' ? value : null
+  }
+
+  get preprintEnabled (): boolean {
+    return this.meshTestMode === 3
   }
 
   get preprintText (): string {
@@ -185,9 +280,19 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     return 'нет metadata текущего задания'
   }
 
+  private socket (): FluiddSocket {
+    return (this as unknown as { $socket: FluiddSocket }).$socket
+  }
+
   private apiClient (): Ad5xApiClient {
-    const socket = (this as unknown as { $socket: Ad5xSocketTransport }).$socket
-    return new Ad5xApiClient(socket)
+    return new Ad5xApiClient(this.socket())
+  }
+
+  private async runGcode (script: string): Promise<void> {
+    await this.socket().emit('printer.gcode.script', {
+      dispatch: 'console/onGcodeScript',
+      params: { script }
+    })
   }
 
   async refresh (): Promise<void> {
@@ -200,6 +305,38 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
       this.error = error instanceof Error ? error.message : 'Не удалось получить состояние калибровки.'
     } finally {
       this.loading = false
+    }
+  }
+
+  async setPreprint (enabled: boolean): Promise<void> {
+    if (this.controlsDisabled) return
+    this.actionLoading = 'preprint'
+    this.actionError = null
+    try {
+      await this.runGcode(`AD5X_Z_SET_PREPRINT ENABLED=${enabled ? 1 : 0}`)
+      await this.refresh()
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error
+        ? `Не удалось изменить pre-print калибровку: ${error.message}`
+        : 'Не удалось изменить pre-print калибровку.'
+    } finally {
+      this.actionLoading = null
+    }
+  }
+
+  async homeZ (): Promise<void> {
+    if (this.controlsDisabled) return
+    this.actionLoading = 'home'
+    this.actionError = null
+    try {
+      await this.runGcode('G28 Z')
+      await this.refresh()
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error
+        ? `Homing Z не выполнен: ${error.message}`
+        : 'Homing Z не выполнен.'
+    } finally {
+      this.actionLoading = null
     }
   }
 
