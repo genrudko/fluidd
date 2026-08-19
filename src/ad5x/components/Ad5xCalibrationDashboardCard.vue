@@ -200,8 +200,8 @@ export default class Ad5xCalibrationDashboardCard extends Vue {
     }
   }
 
-  created (): void {
-    void this.refresh()
+  async created (): Promise<void> {
+    await this.refresh()
   }
 }
 </script>
