@@ -37,16 +37,14 @@ describe('Ad5xCalibrationDashboardCard', () => {
     const wrapper = shallowMount(Ad5xCalibrationDashboardCard, {
       localVue,
       store: createStore(),
-      methods: {
-        refresh: vi.fn().mockResolvedValue(undefined)
-      },
       mocks: {
         $socket: { emit: vi.fn().mockResolvedValue({}) },
         $router: { push: vi.fn() }
       }
     })
 
-    const card = wrapper.find('collapsable-card-stub')
+    const card = wrapper.find('collapsable-card')
+    expect(card.exists()).toBe(true)
     expect(card.attributes('layout-path')).toBe('dashboard.ad5x-calibration-dashboard-card')
     expect(card.attributes('draggable')).toBeDefined()
   })
