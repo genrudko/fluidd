@@ -112,8 +112,12 @@ export interface Ad5xZCalibrationApi {
   getZCalibrationDiagnostics: () => Promise<Ad5xZCalibrationDiagnostics>
 }
 
+export interface Ad5xSocketRequestOptions {
+  params?: Readonly<Record<string, unknown>>
+}
+
 export interface Ad5xSocketTransport {
-  emit: (method: string) => Promise<unknown>
+  emit: (method: string, options?: Ad5xSocketRequestOptions) => Promise<unknown>
 }
 
 function isRecord (value: unknown): value is Record<string, unknown> {

@@ -91,19 +91,75 @@
         Пусто
       </div>
     </v-card-text>
+
+    <v-card-actions
+      v-if="slotData.present"
+      class="justify-center flex-wrap ifs-slot-card__actions"
+    >
+      <v-btn
+        small
+        text
+        color="primary"
+        data-test="slot-select"
+        :disabled="isActionDisabled('select_slot')"
+        :loading="isActionLoading('select_slot')"
+        @click="requestAction('select_slot')"
+      >
+        Выбрать
+      </v-btn>
+      <v-btn
+        small
+        text
+        data-test="slot-load"
+        :disabled="isActionDisabled('load_slot')"
+        :loading="isActionLoading('load_slot')"
+        @click="requestAction('load_slot')"
+      >
+        Загрузить
+      </v-btn>
+      <v-btn
+        small
+        text
+        data-test="slot-unload"
+        :disabled="isActionDisabled('unload_slot')"
+        :loading="isActionLoading('unload_slot')"
+        @click="requestAction('unload_slot')"
+      >
+        Выгрузить
+      </v-btn>
+    </v-card-actions>
   </v-card>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
 import { Component, Prop } from 'vue-property-decorator'
-import type { Ad5xIfsSlot } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsSlot } from '@/ad5x/api/ifs'
 import IfsSpoolGraphic from './IfsSpoolGraphic.vue'
 
 @Component({ components: { IfsSpoolGraphic } })
 export default class IfsSlotCard extends Vue {
   @Prop({ type: Object, required: true })
   readonly slotData!: Ad5xIfsSlot
+
+  @Prop({ type: Boolean, default: false })
+  readonly actionsLocked!: boolean
+
+  @Prop({ type: String, default: null })
+  readonly actionBusy!: Ad5xIfsAction | null
+
+  isActionLoading (action: Ad5xIfsAction): boolean {
+    return this.actionBusy === action
+  }
+
+  isActionDisabled (action: Ad5xIfsAction): boolean {
+    return this.actionsLocked || !this.slotData.permissions[action]
+  }
+
+  requestAction (action: Ad5xIfsAction): void {
+    if (this.isActionDisabled(action)) return
+    this.$emit('action', action)
+  }
 
   get materialLabel (): string {
     const material = this.slotData.spool.material || this.slotData.material || 'Материал не определён'
@@ -142,7 +198,8 @@ export default class IfsSlotCard extends Vue {
     box-shadow: 0 0 0 1px var(--v-primary-base);
   }
 
-  &__chips {
+  &__chips,
+  &__actions {
     gap: 6px;
   }
 }

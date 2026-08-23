@@ -70,6 +70,17 @@ function errorMessage (error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown Plugins AD5X API error'
 }
 
+export function applyAd5xSnapshot<TRootState> (
+  store: Store<TRootState>,
+  snapshot: Ad5xSnapshot
+): void {
+  ensureAd5xStore(store)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, snapshot)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setNotifiedRevision`, snapshot.revision)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'compatible')
+  store.commit(`${AD5X_STORE_NAMESPACE}/setError`, null)
+}
+
 export async function refreshAd5x<TRootState> (
   store: Store<TRootState>,
   api: Ad5xApi
@@ -81,9 +92,7 @@ export async function refreshAd5x<TRootState> (
   try {
     const snapshot = await api.getSnapshot()
 
-    store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, snapshot)
-    store.commit(`${AD5X_STORE_NAMESPACE}/setNotifiedRevision`, snapshot.revision)
-    store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'compatible')
+    applyAd5xSnapshot(store, snapshot)
   } catch (error: unknown) {
     store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'error')
     store.commit(`${AD5X_STORE_NAMESPACE}/setError`, errorMessage(error))

@@ -40,6 +40,27 @@ function emptySlotWithStaleMetadata (): Ad5xIfsSlot {
   }
 }
 
+function actionableSlot (): Ad5xIfsSlot {
+  return {
+    ...emptySlotWithStaleMetadata(),
+    slot: 2,
+    present: true,
+    spool: {
+      ...emptySlotWithStaleMetadata().spool,
+      source: 'spoolman',
+      name: 'PETG Black',
+      material: 'PETG',
+      spoolman_id: 42,
+      spoolman_spool_id: 42
+    },
+    appearance: { color_mode: 'solid', colors: ['#112233'], finish: 'standard' },
+    metadata_status: 'assigned',
+    current_identity_status: 'assigned',
+    stale_metadata_available: false,
+    permissions: { select_slot: true, load_slot: true, unload_slot: false, blocked_reason: '' }
+  }
+}
+
 describe('IfsSlotCard', () => {
   it('never presents stale spool identity as installed when the physical slot is empty', () => {
     const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: emptySlotWithStaleMetadata() } })
@@ -48,5 +69,25 @@ describe('IfsSlotCard', () => {
     expect(wrapper.find('[data-test="slot-material"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="slot-spoolman"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Old spool')
+  })
+
+  it('emits only backend-permitted IFS actions', async () => {
+    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot() } })
+
+    await wrapper.get('[data-test="slot-select"]').trigger('click')
+    await wrapper.get('[data-test="slot-load"]').trigger('click')
+    await wrapper.get('[data-test="slot-unload"]').trigger('click')
+
+    expect(wrapper.emitted('action')).toEqual([['select_slot'], ['load_slot']])
+  })
+
+  it('locks every action while another IFS operation is in flight', async () => {
+    const wrapper = mount(IfsSlotCard, {
+      vuetify,
+      propsData: { slotData: actionableSlot(), actionsLocked: true }
+    })
+
+    await wrapper.get('[data-test="slot-select"]').trigger('click')
+    expect(wrapper.emitted('action')).toBeUndefined()
   })
 })

@@ -110,6 +110,48 @@ describe('Ad5xApiClient', () => {
     expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.snapshot')
   })
 
+  it('sends typed IFS actions through the Plugins AD5X RPC and accepts its snapshot', async () => {
+    const payload = {
+      ok: true,
+      action: 'load_slot',
+      slot: 2,
+      result: 'ok',
+      snapshot: sharedSnapshot()
+    }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.performIfsAction('load_slot', 2)).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.action', {
+      params: { action: 'load_slot', slot: 2 }
+    })
+  })
+
+  it('accepts backend IFS rejections but rejects mismatched action responses', async () => {
+    const rejected = {
+      ok: false,
+      action: 'unload_slot',
+      slot: 3,
+      error: 'toolhead_empty',
+      snapshot: sharedSnapshot()
+    }
+    const client = new Ad5xApiClient({ emit: vi.fn().mockResolvedValue(rejected) })
+    await expect(client.performIfsAction('unload_slot', 3)).resolves.toEqual(rejected)
+
+    const mismatched = new Ad5xApiClient({ emit: vi.fn().mockResolvedValue({ ...rejected, slot: 4 }) })
+    await expect(mismatched.performIfsAction('unload_slot', 3)).rejects.toThrow(
+      'IFS action response is incompatible with API 1.0'
+    )
+  })
+
+  it('rejects an invalid IFS slot before touching the socket', async () => {
+    const emit = vi.fn()
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.performIfsAction('select_slot', 5)).rejects.toThrow('Invalid IFS slot: 5')
+    expect(emit).not.toHaveBeenCalled()
+  })
+
   it('uses the standalone Z Calibration snapshot RPC', async () => {
     const payload = zSnapshot()
     const emit = vi.fn().mockResolvedValue(payload)

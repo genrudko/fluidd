@@ -1,6 +1,17 @@
-import type { Ad5xSnapshot } from './types'
+import { isAd5xSnapshot, type Ad5xSnapshot } from './types'
 
 export type Ad5xIfsColorMode = 'solid' | 'dual' | 'tricolor' | 'gradient' | 'rainbow' | 'special'
+
+export type Ad5xIfsAction = 'select_slot' | 'load_slot' | 'unload_slot'
+
+export interface Ad5xIfsActionResult {
+  ok: boolean
+  action: Ad5xIfsAction
+  slot: number
+  result?: unknown
+  error?: string
+  snapshot: Ad5xSnapshot
+}
 
 export interface Ad5xIfsAppearance {
   color_mode: Ad5xIfsColorMode
@@ -98,6 +109,25 @@ function isFiniteNumberOrNull (value: unknown): value is number | null {
 
 function isInteger (value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value)
+}
+
+function isIfsAction (value: unknown): value is Ad5xIfsAction {
+  return value === 'select_slot' || value === 'load_slot' || value === 'unload_slot'
+}
+
+export function isAd5xIfsActionResult (
+  value: unknown,
+  expectedAction?: Ad5xIfsAction,
+  expectedSlot?: number
+): value is Ad5xIfsActionResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') return false
+  if (!isIfsAction(value.action)) return false
+  if (!isInteger(value.slot) || value.slot < 1 || value.slot > 4) return false
+  if (expectedAction !== undefined && value.action !== expectedAction) return false
+  if (expectedSlot !== undefined && value.slot !== expectedSlot) return false
+  if (value.error !== undefined && typeof value.error !== 'string') return false
+  if (!value.ok && typeof value.error !== 'string') return false
+  return isAd5xSnapshot(value.snapshot)
 }
 
 function isStringArray (value: unknown): value is string[] {

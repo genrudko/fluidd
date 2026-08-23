@@ -46,6 +46,15 @@
         {{ ad5xState.error }}
       </v-alert>
 
+      <v-alert
+        v-if="actionError"
+        text
+        type="error"
+        data-test="ifs-action-error"
+      >
+        {{ actionError }}
+      </v-alert>
+
       <v-card
         v-if="ad5xState.apiStatus === 'loading' && !ifsModule"
         outlined
@@ -107,7 +116,12 @@
             sm="6"
             lg="3"
           >
-            <ifs-slot-card :slot-data="slot" />
+            <ifs-slot-card
+              :slot-data="slot"
+              :actions-locked="actionsLocked"
+              :action-busy="actionBusyFor(slot)"
+              @action="runSlotAction(slot, $event)"
+            />
           </v-col>
         </v-row>
 
@@ -130,17 +144,19 @@
 import Vue from 'vue'
 import { Component, Watch } from 'vue-property-decorator'
 import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
-import type { Ad5xIfsModule, Ad5xIfsSlot } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsModule, Ad5xIfsSlot } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
-import { getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
+import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
 @Component({ components: { IfsFilamentPath, IfsSlotCard } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
+  actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
+  actionError = ''
 
   get ad5xState (): Ad5xState {
     return getAd5xState(this.$store)
@@ -164,6 +180,37 @@ export default class Ad5xMaterials extends Vue {
 
   get notifiedRevision (): number {
     return this.ad5xState.notifiedRevision
+  }
+
+  get actionsLocked (): boolean {
+    return this.refreshing ||
+      this.actionInFlight !== null ||
+      this.ad5xState.apiStatus !== 'compatible' ||
+      (this.ifsModule?.operation.state ?? 'idle') !== 'idle'
+  }
+
+  actionBusyFor (slot: Ad5xIfsSlot): Ad5xIfsAction | null {
+    return this.actionInFlight?.slot === slot.slot ? this.actionInFlight.action : null
+  }
+
+  async runSlotAction (slot: Ad5xIfsSlot, action: Ad5xIfsAction): Promise<void> {
+    if (this.actionsLocked || !slot.permissions[action]) return
+
+    this.actionInFlight = { action, slot: slot.slot }
+    this.actionError = ''
+    try {
+      const result = await this.apiClient().performIfsAction(action, slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) {
+        this.actionError = result.error || 'Действие IFS отклонено backend'
+      }
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error
+        ? error.message
+        : 'Не удалось выполнить действие IFS'
+    } finally {
+      this.actionInFlight = null
+    }
   }
 
   get spoolmanLabel (): string {

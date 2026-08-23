@@ -2,6 +2,7 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import {
   AD5X_STORE_NAMESPACE,
+  applyAd5xSnapshot,
   ensureAd5xStore,
   getAd5xState,
   initializeAd5x,
@@ -89,6 +90,22 @@ describe('AD5X local store', () => {
     await store.dispatch(`${AD5X_STORE_NAMESPACE}/onSnapshotChanged`, { revision: 6 })
 
     expect(getAd5xState(store).notifiedRevision).toBe(8)
+  })
+
+  it('applies an action response snapshot without an extra backend read', async () => {
+    const store = createStore()
+    await initializeAd5x(store, true, { getSnapshot: vi.fn().mockResolvedValue(snapshot(3)) })
+
+    const payload = snapshot(11)
+    applyAd5xSnapshot(store, payload)
+
+    expect(getAd5xState(store)).toMatchObject({
+      backendAvailable: true,
+      apiStatus: 'compatible',
+      snapshot: payload,
+      notifiedRevision: 11,
+      error: null
+    })
   })
 
   it('refreshes the snapshot without resetting backend availability', async () => {

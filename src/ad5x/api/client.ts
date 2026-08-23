@@ -7,6 +7,8 @@ import type {
   Ad5xZCalibrationReconcileResult,
   Ad5xZCalibrationSnapshot
 } from './types'
+import type { Ad5xIfsAction, Ad5xIfsActionResult } from './ifs'
+import { isAd5xIfsActionResult } from './ifs'
 import {
   isAd5xSnapshot,
   isAd5xZCalibrationDiagnostics,
@@ -15,6 +17,7 @@ import {
 } from './types'
 
 const SNAPSHOT_METHOD = 'server.plugins_ad5x.snapshot'
+const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
 const ZCAL_SNAPSHOT_METHOD = 'server.plugins_ad5x.z_calibration.snapshot'
 const ZCAL_RECONCILE_METHOD = 'server.plugins_ad5x.z_calibration.reconcile'
 const ZCAL_DIAGNOSTICS_METHOD = 'server.plugins_ad5x.z_calibration.diagnostics'
@@ -47,6 +50,22 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
 
     if (!isAd5xSnapshot(response)) {
       throw new Error('Plugins AD5X snapshot response is incompatible with API 1.0')
+    }
+
+    return response
+  }
+
+  async performIfsAction (action: Ad5xIfsAction, slot: number): Promise<Ad5xIfsActionResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) {
+      throw new Error(`Invalid IFS slot: ${slot}`)
+    }
+
+    const response = await this.socket.emit(IFS_ACTION_METHOD, {
+      params: { action, slot }
+    })
+
+    if (!isAd5xIfsActionResult(response, action, slot)) {
+      throw new Error('IFS action response is incompatible with API 1.0')
     }
 
     return response
