@@ -1,4 +1,4 @@
-import { Ad5xApiClient } from '../client'
+import { Ad5xApiClient, resolveAd5xSocketTransport } from '../client'
 
 function sharedSnapshot () {
   return {
@@ -88,6 +88,19 @@ function zSnapshot () {
 }
 
 describe('Ad5xApiClient', () => {
+  it('resolves the Fluidd runtime socket without relying on Vue type augmentation', () => {
+    const emit = vi.fn()
+    const socket = { emit }
+
+    expect(resolveAd5xSocketTransport({ $socket: socket })).toBe(socket)
+  })
+
+  it('rejects an incompatible Fluidd socket host', () => {
+    expect(() => resolveAd5xSocketTransport({ $socket: {} })).toThrow(
+      'Fluidd socket transport is incompatible'
+    )
+  })
+
   it('keeps the shared Plugins AD5X snapshot boundary intact', async () => {
     const payload = sharedSnapshot()
     const emit = vi.fn().mockResolvedValue(payload)

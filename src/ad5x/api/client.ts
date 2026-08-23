@@ -19,6 +19,26 @@ const ZCAL_SNAPSHOT_METHOD = 'server.plugins_ad5x.z_calibration.snapshot'
 const ZCAL_RECONCILE_METHOD = 'server.plugins_ad5x.z_calibration.reconcile'
 const ZCAL_DIAGNOSTICS_METHOD = 'server.plugins_ad5x.z_calibration.diagnostics'
 
+function isAd5xSocketTransport (value: unknown): value is Ad5xSocketTransport {
+  return typeof value === 'object' &&
+    value !== null &&
+    'emit' in value &&
+    typeof value.emit === 'function'
+}
+
+export function resolveAd5xSocketTransport (host: unknown): Ad5xSocketTransport {
+  if (typeof host !== 'object' || host === null || !('$socket' in host)) {
+    throw new Error('Fluidd socket transport is unavailable')
+  }
+
+  const socket = host.$socket
+  if (!isAd5xSocketTransport(socket)) {
+    throw new Error('Fluidd socket transport is incompatible')
+  }
+
+  return socket
+}
+
 export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
   constructor (private readonly socket: Ad5xSocketTransport) {}
 

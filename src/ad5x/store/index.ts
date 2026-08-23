@@ -11,6 +11,7 @@ function createState (): Ad5xState {
     backendAvailable: false,
     apiStatus: 'idle',
     snapshot: null,
+    notifiedRevision: 0,
     error: null
   }
 }
@@ -22,6 +23,11 @@ function createModule<TRootState> (): Module<Ad5xState, TRootState> {
     actions: {
       reset ({ commit }) {
         commit('reset')
+      },
+      onSnapshotChanged ({ commit }, payload: { revision: number }) {
+        if (Number.isInteger(payload.revision) && payload.revision >= 0) {
+          commit('setNotifiedRevision', payload.revision)
+        }
       }
     },
     mutations: {
@@ -36,6 +42,9 @@ function createModule<TRootState> (): Module<Ad5xState, TRootState> {
       },
       setSnapshot (state, value: Ad5xSnapshot | null) {
         state.snapshot = value
+      },
+      setNotifiedRevision (state, value: number) {
+        state.notifiedRevision = Math.max(state.notifiedRevision, value)
       },
       setError (state, value: string | null) {
         state.error = value
@@ -61,6 +70,26 @@ function errorMessage (error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown Plugins AD5X API error'
 }
 
+export async function refreshAd5x<TRootState> (
+  store: Store<TRootState>,
+  api: Ad5xApi
+): Promise<void> {
+  ensureAd5xStore(store)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'loading')
+  store.commit(`${AD5X_STORE_NAMESPACE}/setError`, null)
+
+  try {
+    const snapshot = await api.getSnapshot()
+
+    store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, snapshot)
+    store.commit(`${AD5X_STORE_NAMESPACE}/setNotifiedRevision`, snapshot.revision)
+    store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'compatible')
+  } catch (error: unknown) {
+    store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'error')
+    store.commit(`${AD5X_STORE_NAMESPACE}/setError`, errorMessage(error))
+  }
+}
+
 export async function initializeAd5x<TRootState> (
   store: Store<TRootState>,
   backendAvailable: boolean,
@@ -69,6 +98,7 @@ export async function initializeAd5x<TRootState> (
   ensureAd5xStore(store)
   store.commit(`${AD5X_STORE_NAMESPACE}/setBackendAvailable`, backendAvailable)
   store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, null)
+  store.commit(`${AD5X_STORE_NAMESPACE}/setNotifiedRevision`, 0)
   store.commit(`${AD5X_STORE_NAMESPACE}/setError`, null)
 
   if (!backendAvailable) {
@@ -82,15 +112,5 @@ export async function initializeAd5x<TRootState> (
     return
   }
 
-  store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'loading')
-
-  try {
-    const snapshot = await api.getSnapshot()
-
-    store.commit(`${AD5X_STORE_NAMESPACE}/setSnapshot`, snapshot)
-    store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'compatible')
-  } catch (error: unknown) {
-    store.commit(`${AD5X_STORE_NAMESPACE}/setApiStatus`, 'error')
-    store.commit(`${AD5X_STORE_NAMESPACE}/setError`, errorMessage(error))
-  }
+  await refreshAd5x(store, api)
 }

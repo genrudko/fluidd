@@ -6,5 +6,6 @@ export interface Ad5xState {
   backendAvailable: boolean
   apiStatus: Ad5xApiStatus
   snapshot: Ad5xSnapshot | null
+  notifiedRevision: number
   error: string | null
 }
