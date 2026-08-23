@@ -81,6 +81,12 @@ describe('IfsSlotCard', () => {
     expect(wrapper.emitted('action')).toEqual([['select_slot'], ['load_slot']])
   })
 
+  it('opens manual material metadata only when the page allows it', async () => {
+    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), metadataAvailable: true } })
+    await wrapper.get('[data-test="slot-metadata-manage"]').trigger('click')
+    expect(wrapper.emitted('metadata')).toHaveLength(1)
+  })
+
   it('opens Spoolman management only when integration is available', async () => {
     const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), spoolmanAvailable: true } })
     await wrapper.get('[data-test="slot-spoolman-manage"]').trigger('click')

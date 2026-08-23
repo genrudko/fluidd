@@ -13,6 +13,19 @@ export interface Ad5xIfsActionResult {
   snapshot: Ad5xSnapshot
 }
 
+export interface Ad5xIfsMetadataResult {
+  ok: boolean
+  slot: number
+  result?: string
+  error?: string
+  snapshot: Ad5xSnapshot
+}
+
+export interface Ad5xIfsMetadataDraft {
+  spool: Ad5xIfsSpool
+  appearance: Ad5xIfsAppearance
+}
+
 export interface Ad5xSpoolmanInventory {
   remaining_g: number | null
   remaining_length_mm: number | null
@@ -162,6 +175,19 @@ export function isAd5xIfsActionResult (
   if (!isInteger(value.slot) || value.slot < 1 || value.slot > 4) return false
   if (expectedAction !== undefined && value.action !== expectedAction) return false
   if (expectedSlot !== undefined && value.slot !== expectedSlot) return false
+  if (value.error !== undefined && typeof value.error !== 'string') return false
+  if (!value.ok && typeof value.error !== 'string') return false
+  return isAd5xSnapshot(value.snapshot)
+}
+
+export function isAd5xIfsMetadataResult (
+  value: unknown,
+  expectedSlot?: number
+): value is Ad5xIfsMetadataResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') return false
+  if (!isInteger(value.slot) || value.slot < 0 || value.slot > 4) return false
+  if (expectedSlot !== undefined && value.slot !== expectedSlot) return false
+  if (value.result !== undefined && typeof value.result !== 'string') return false
   if (value.error !== undefined && typeof value.error !== 'string') return false
   if (!value.ok && typeof value.error !== 'string') return false
   return isAd5xSnapshot(value.snapshot)

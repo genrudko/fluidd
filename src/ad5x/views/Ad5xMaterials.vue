@@ -120,12 +120,24 @@
               :slot-data="slot"
               :actions-locked="actionsLocked"
               :action-busy="actionBusyFor(slot)"
+              :metadata-available="metadataAvailableFor(slot)"
               :spoolman-available="spoolmanAvailableFor(slot)"
               @action="runSlotAction(slot, $event)"
+              @metadata="openMetadata(slot)"
               @spoolman="openSpoolman(slot)"
             />
           </v-col>
         </v-row>
+
+        <ifs-metadata-dialog
+          v-model="metadataDialogOpen"
+          :slot-data="metadataSlot"
+          :busy="metadataBusy"
+          :locked="actionsLocked"
+          :error="metadataError"
+          @save="saveMetadata"
+          @clear="clearMetadata"
+        />
 
         <ifs-spoolman-dialog
           v-model="spoolmanDialogOpen"
@@ -162,20 +174,25 @@
 import Vue from 'vue'
 import { Component, Watch } from 'vue-property-decorator'
 import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
-import type { Ad5xIfsAction, Ad5xIfsModule, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
+import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
 import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
-@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
   actionError = ''
+  metadataDialogOpen = false
+  metadataSlotNumber = 0
+  metadataBusy = false
+  metadataError = ''
   spoolmanDialogOpen = false
   spoolmanSlotNumber = 0
   spoolmanQuery = ''
@@ -211,6 +228,7 @@ export default class Ad5xMaterials extends Vue {
   get actionsLocked (): boolean {
     return this.refreshing ||
       this.actionInFlight !== null ||
+      this.metadataBusy ||
       this.spoolmanBusy ||
       this.ad5xState.apiStatus !== 'compatible' ||
       (this.ifsModule?.operation.state ?? 'idle') !== 'idle'
@@ -218,6 +236,56 @@ export default class Ad5xMaterials extends Vue {
 
   actionBusyFor (slot: Ad5xIfsSlot): Ad5xIfsAction | null {
     return this.actionInFlight?.slot === slot.slot ? this.actionInFlight.action : null
+  }
+
+  get metadataSlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.metadataSlotNumber) ?? null
+  }
+
+  metadataAvailableFor (slot: Ad5xIfsSlot): boolean {
+    return slot.present && slot.spool.spoolman_spool_id === null
+  }
+
+  openMetadata (slot: Ad5xIfsSlot): void {
+    if (!this.metadataAvailableFor(slot) || this.actionsLocked) return
+    this.spoolmanDialogOpen = false
+    this.metadataSlotNumber = slot.slot
+    this.metadataError = ''
+    this.metadataDialogOpen = true
+  }
+
+  async saveMetadata (draft: Ad5xIfsMetadataDraft): Promise<void> {
+    const slot = this.metadataSlot
+    if (!slot || !this.metadataAvailableFor(slot) || this.actionsLocked) return
+    this.metadataBusy = true
+    this.metadataError = ''
+    try {
+      const result = await this.apiClient().updateIfsMetadata(slot.slot, draft.spool, draft.appearance)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.metadataError = result.error || 'Backend отклонил данные материала'
+      else this.metadataDialogOpen = false
+    } catch (error: unknown) {
+      this.metadataError = error instanceof Error ? error.message : 'Не удалось сохранить данные материала'
+    } finally {
+      this.metadataBusy = false
+    }
+  }
+
+  async clearMetadata (): Promise<void> {
+    const slot = this.metadataSlot
+    if (!slot || slot.spool.source !== 'manual' || slot.spool.spoolman_spool_id !== null || this.actionsLocked) return
+    this.metadataBusy = true
+    this.metadataError = ''
+    try {
+      const result = await this.apiClient().clearIfsMetadata(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.metadataError = result.error || 'Backend отклонил очистку данных материала'
+      else this.metadataDialogOpen = false
+    } catch (error: unknown) {
+      this.metadataError = error instanceof Error ? error.message : 'Не удалось очистить данные материала'
+    } finally {
+      this.metadataBusy = false
+    }
   }
 
   get spoolmanConnected (): boolean {
@@ -234,6 +302,7 @@ export default class Ad5xMaterials extends Vue {
 
   async openSpoolman (slot: Ad5xIfsSlot): Promise<void> {
     if (!this.spoolmanAvailableFor(slot) || this.actionsLocked) return
+    this.metadataDialogOpen = false
     this.spoolmanSlotNumber = slot.slot
     this.spoolmanQuery = ''
     this.spoolmanItems = []

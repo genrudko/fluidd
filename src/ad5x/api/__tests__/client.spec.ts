@@ -152,6 +152,25 @@ describe('Ad5xApiClient', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
+  it('updates and clears manual IFS metadata through the canonical backend endpoint', async () => {
+    const spool = { source: 'flashforge', brand: 'Test', series: '', name: 'PETG', material: 'PETG', variant: '', spoolman_id: null, spoolman_spool_id: null, spoolman_filament_id: null, remaining_g: 500, remaining_length_mm: null, initial_g: 1000, used_g: 500, used_length_mm: null, location: '', archived: false, nozzle_temp: 240, bed_temp: 70, orca_material: '', orca_filament_id: 'keep', orca_setting_id: '' }
+    const appearance = { color_mode: 'solid' as const, colors: ['#112233'], finish: 'matte' }
+    const emit = vi.fn()
+      .mockResolvedValueOnce({ ok: true, slot: 2, result: 'updated', snapshot: sharedSnapshot() })
+      .mockResolvedValueOnce({ ok: true, slot: 2, result: 'cleared', snapshot: sharedSnapshot() })
+    const client = new Ad5xApiClient({ emit })
+
+    await client.updateIfsMetadata(2, spool, appearance)
+    await client.clearIfsMetadata(2)
+
+    expect(emit).toHaveBeenNthCalledWith(1, 'server.plugins_ad5x.ifs.metadata', {
+      params: { slot: 2, clear: false, spool, appearance }
+    })
+    expect(emit).toHaveBeenNthCalledWith(2, 'server.plugins_ad5x.ifs.metadata', {
+      params: { slot: 2, clear: true }
+    })
+  })
+
   it('loads the normalized Spoolman library through Plugins AD5X', async () => {
     const item = {
       spoolman_spool_id: 42,

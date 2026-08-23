@@ -10,11 +10,15 @@ import type {
 import type {
   Ad5xIfsAction,
   Ad5xIfsActionResult,
+  Ad5xIfsAppearance,
+  Ad5xIfsMetadataResult,
+  Ad5xIfsSpool,
   Ad5xSpoolmanLibraryResult,
   Ad5xSpoolmanMutationResult
 } from './ifs'
 import {
   isAd5xIfsActionResult,
+  isAd5xIfsMetadataResult,
   isAd5xSpoolmanLibraryResult,
   isAd5xSpoolmanMutationResult
 } from './ifs'
@@ -27,6 +31,7 @@ import {
 
 const SNAPSHOT_METHOD = 'server.plugins_ad5x.snapshot'
 const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
+const IFS_METADATA_METHOD = 'server.plugins_ad5x.ifs.metadata'
 const IFS_SPOOLMAN_LIBRARY_METHOD = 'server.plugins_ad5x.ifs.spoolman.library'
 const IFS_SPOOLMAN_BIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.bind'
 const IFS_SPOOLMAN_UNBIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.unbind'
@@ -81,6 +86,30 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
       throw new Error('IFS action response is incompatible with API 1.0')
     }
 
+    return response
+  }
+
+  async updateIfsMetadata (
+    slot: number,
+    spool: Ad5xIfsSpool,
+    appearance: Ad5xIfsAppearance
+  ): Promise<Ad5xIfsMetadataResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    const response = await this.socket.emit(IFS_METADATA_METHOD, {
+      params: { slot, clear: false, spool, appearance }
+    })
+    if (!isAd5xIfsMetadataResult(response, slot)) {
+      throw new Error('IFS metadata response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async clearIfsMetadata (slot: number): Promise<Ad5xIfsMetadataResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    const response = await this.socket.emit(IFS_METADATA_METHOD, { params: { slot, clear: true } })
+    if (!isAd5xIfsMetadataResult(response, slot)) {
+      throw new Error('IFS metadata response is incompatible with API 1.0')
+    }
     return response
   }
 

@@ -128,6 +128,16 @@
         Выгрузить
       </v-btn>
       <v-btn
+        v-if="metadataAvailable"
+        small
+        text
+        data-test="slot-metadata-manage"
+        :disabled="actionsLocked"
+        @click="requestMetadata"
+      >
+        Материал
+      </v-btn>
+      <v-btn
         v-if="spoolmanAvailable"
         small
         text
@@ -161,6 +171,9 @@ export default class IfsSlotCard extends Vue {
   @Prop({ type: Boolean, default: false })
   readonly spoolmanAvailable!: boolean
 
+  @Prop({ type: Boolean, default: false })
+  readonly metadataAvailable!: boolean
+
   isActionLoading (action: Ad5xIfsAction): boolean {
     return this.actionBusy === action
   }
@@ -172,6 +185,11 @@ export default class IfsSlotCard extends Vue {
   requestAction (action: Ad5xIfsAction): void {
     if (this.isActionDisabled(action)) return
     this.$emit('action', action)
+  }
+
+  requestMetadata (): void {
+    if (this.actionsLocked || !this.metadataAvailable) return
+    this.$emit('metadata')
   }
 
   requestSpoolman (): void {
