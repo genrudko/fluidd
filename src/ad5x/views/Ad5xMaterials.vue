@@ -129,6 +129,11 @@
           </v-col>
         </v-row>
 
+        <ifs-preprint-plan
+          :plan="ifsModule.preprint_plan"
+          :slots="slots"
+        />
+
         <ifs-metadata-dialog
           v-model="metadataDialogOpen"
           :slot-data="metadataSlot"
@@ -179,12 +184,13 @@ import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
+import IfsPreprintPlan from '@/ad5x/components/IfsPreprintPlan.vue'
 import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
-@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null

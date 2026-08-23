@@ -26,6 +26,48 @@ export interface Ad5xIfsMetadataDraft {
   appearance: Ad5xIfsAppearance
 }
 
+export type Ad5xIfsPreprintStatus = 'unavailable' | 'ready' | 'warning' | 'blocked'
+export type Ad5xIfsPreprintRowState = 'ready' | 'unassigned' | 'slot_missing' | 'slot_empty'
+
+export interface Ad5xIfsPreprintRequirement {
+  material: string
+  color: string
+}
+
+export interface Ad5xIfsPreprintAssignment {
+  slot: number
+  present: boolean
+  metadata_status: string
+  spool: Readonly<Record<string, unknown>>
+  appearance: Readonly<Record<string, unknown>>
+}
+
+export interface Ad5xIfsPreprintRow {
+  tool: number
+  requirement: Ad5xIfsPreprintRequirement
+  assignment: Ad5xIfsPreprintAssignment | null
+  state: Ad5xIfsPreprintRowState
+}
+
+export interface Ad5xIfsPreprintSummary {
+  required_tools: number
+  assigned_tools: number
+  ready_tools: number
+}
+
+export interface Ad5xIfsPreprintPlan {
+  available: boolean
+  source: string
+  filename: string
+  status: Ad5xIfsPreprintStatus
+  rows: readonly Ad5xIfsPreprintRow[]
+  warnings: readonly string[]
+  summary: Ad5xIfsPreprintSummary
+  auto_assign: Readonly<Record<string, unknown>>
+  messages: readonly string[]
+  error: string
+}
+
 export interface Ad5xSpoolmanInventory {
   remaining_g: number | null
   remaining_length_mm: number | null
@@ -146,6 +188,7 @@ export interface Ad5xIfsModule {
   operation: Ad5xIfsOperation
   capabilities: Readonly<Record<string, unknown>>
   write_blocked_reason: string
+  preprint_plan: Ad5xIfsPreprintPlan
   spoolman?: Ad5xIfsSpoolmanStatus
 }
 
@@ -301,6 +344,40 @@ function isOperation (value: unknown): value is Ad5xIfsOperation {
     typeof value.error === 'string'
 }
 
+function isPreprintAssignment (value: unknown): value is Ad5xIfsPreprintAssignment {
+  return isRecord(value) &&
+    isInteger(value.slot) && value.slot > 0 &&
+    typeof value.present === 'boolean' &&
+    typeof value.metadata_status === 'string' &&
+    isRecord(value.spool) &&
+    isRecord(value.appearance)
+}
+
+function isPreprintRow (value: unknown): value is Ad5xIfsPreprintRow {
+  if (!isRecord(value) || !isInteger(value.tool) || value.tool < 0) return false
+  if (!isRecord(value.requirement)) return false
+  if (typeof value.requirement.material !== 'string' || typeof value.requirement.color !== 'string') return false
+  if (!(value.assignment === null || isPreprintAssignment(value.assignment))) return false
+  return value.state === 'ready' || value.state === 'unassigned' || value.state === 'slot_missing' || value.state === 'slot_empty'
+}
+
+function isPreprintSummary (value: unknown): value is Ad5xIfsPreprintSummary {
+  return isRecord(value) &&
+    isInteger(value.required_tools) && value.required_tools >= 0 &&
+    isInteger(value.assigned_tools) && value.assigned_tools >= 0 &&
+    isInteger(value.ready_tools) && value.ready_tools >= 0
+}
+
+export function isAd5xIfsPreprintPlan (value: unknown): value is Ad5xIfsPreprintPlan {
+  if (!isRecord(value) || typeof value.available !== 'boolean') return false
+  if (typeof value.source !== 'string' || typeof value.filename !== 'string') return false
+  if (!(value.status === 'unavailable' || value.status === 'ready' || value.status === 'warning' || value.status === 'blocked')) return false
+  if (!Array.isArray(value.rows) || !value.rows.every(isPreprintRow)) return false
+  if (!isStringArray(value.warnings) || !isPreprintSummary(value.summary)) return false
+  if (!isRecord(value.auto_assign) || !isStringArray(value.messages) || typeof value.error !== 'string') return false
+  return true
+}
+
 function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {
   if (!isRecord(value)) return false
 
@@ -328,6 +405,7 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (!isOperation(value.operation)) return false
   if (!isRecord(value.capabilities)) return false
   if (typeof value.write_blocked_reason !== 'string') return false
+  if (!isAd5xIfsPreprintPlan(value.preprint_plan)) return false
   if (value.spoolman !== undefined && !isSpoolmanStatus(value.spoolman)) return false
 
   return true

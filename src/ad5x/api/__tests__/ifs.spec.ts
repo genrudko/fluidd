@@ -59,6 +59,23 @@ describe('AD5X IFS frontend contract', () => {
           operation: { state: 'idle', action: '', slot: 0, error: '' },
           capabilities: {},
           write_blocked_reason: '',
+          preprint_plan: {
+            available: true,
+            source: 'zmod',
+            filename: 'demo.gcode',
+            status: 'ready',
+            rows: [{
+              tool: 0,
+              requirement: { material: 'PETG', color: '#112233' },
+              assignment: { slot: 1, present: true, metadata_status: 'assigned', spool: {}, appearance: {} },
+              state: 'ready'
+            }],
+            warnings: [],
+            summary: { required_tools: 1, assigned_tools: 1, ready_tools: 1 },
+            auto_assign: {},
+            messages: [],
+            error: ''
+          },
           spoolman: {
             configured: true,
             connected: true,
@@ -79,6 +96,7 @@ describe('AD5X IFS frontend contract', () => {
 
     expect(getIfsModule(snapshot)?.active_slot).toBe(1)
     expect(getIfsModule(snapshot)?.slots[0].spool.spoolman_spool_id).toBe(42)
+    expect(getIfsModule(snapshot)?.preprint_plan.rows[0].assignment?.slot).toBe(1)
   })
 
   it('derives display color and remaining percentage from canonical metadata', () => {
