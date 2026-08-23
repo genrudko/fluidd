@@ -120,10 +120,28 @@
               :slot-data="slot"
               :actions-locked="actionsLocked"
               :action-busy="actionBusyFor(slot)"
+              :spoolman-available="spoolmanAvailableFor(slot)"
               @action="runSlotAction(slot, $event)"
+              @spoolman="openSpoolman(slot)"
             />
           </v-col>
         </v-row>
+
+        <ifs-spoolman-dialog
+          v-model="spoolmanDialogOpen"
+          :slot-data="spoolmanSlot"
+          :connected="spoolmanConnected"
+          :items="spoolmanItems"
+          :query.sync="spoolmanQuery"
+          :loading="spoolmanLoading"
+          :busy="spoolmanBusy"
+          :locked="actionsLocked"
+          :error="spoolmanError"
+          @search="searchSpoolman"
+          @bind="bindSpoolman"
+          @unbind="unbindSpoolman"
+          @refresh="refreshSpoolman"
+        />
 
         <v-alert
           v-if="ifsModule.operation.state !== 'idle'"
@@ -144,19 +162,27 @@
 import Vue from 'vue'
 import { Component, Watch } from 'vue-property-decorator'
 import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
-import type { Ad5xIfsAction, Ad5xIfsModule, Ad5xIfsSlot } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsModule, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
+import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
-@Component({ components: { IfsFilamentPath, IfsSlotCard } })
+@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
   actionError = ''
+  spoolmanDialogOpen = false
+  spoolmanSlotNumber = 0
+  spoolmanQuery = ''
+  spoolmanItems: readonly Ad5xSpoolmanLibraryItem[] = []
+  spoolmanLoading = false
+  spoolmanBusy = false
+  spoolmanError = ''
 
   get ad5xState (): Ad5xState {
     return getAd5xState(this.$store)
@@ -185,12 +211,93 @@ export default class Ad5xMaterials extends Vue {
   get actionsLocked (): boolean {
     return this.refreshing ||
       this.actionInFlight !== null ||
+      this.spoolmanBusy ||
       this.ad5xState.apiStatus !== 'compatible' ||
       (this.ifsModule?.operation.state ?? 'idle') !== 'idle'
   }
 
   actionBusyFor (slot: Ad5xIfsSlot): Ad5xIfsAction | null {
     return this.actionInFlight?.slot === slot.slot ? this.actionInFlight.action : null
+  }
+
+  get spoolmanConnected (): boolean {
+    return this.ifsModule?.spoolman?.connected ?? false
+  }
+
+  get spoolmanSlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.spoolmanSlotNumber) ?? null
+  }
+
+  spoolmanAvailableFor (slot: Ad5xIfsSlot): boolean {
+    return Boolean(this.ifsModule?.spoolman?.configured || slot.spool.spoolman_spool_id !== null)
+  }
+
+  async openSpoolman (slot: Ad5xIfsSlot): Promise<void> {
+    if (!this.spoolmanAvailableFor(slot) || this.actionsLocked) return
+    this.spoolmanSlotNumber = slot.slot
+    this.spoolmanQuery = ''
+    this.spoolmanItems = []
+    this.spoolmanError = ''
+    this.spoolmanDialogOpen = true
+    if (this.spoolmanConnected) await this.searchSpoolman()
+  }
+
+  async searchSpoolman (): Promise<void> {
+    if (!this.spoolmanConnected || this.spoolmanLoading || this.actionsLocked) return
+    this.spoolmanLoading = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().getSpoolmanLibrary(this.spoolmanQuery)
+      this.spoolmanItems = result.items
+      if (!result.ok) this.spoolmanError = result.error || 'Не удалось загрузить библиотеку Spoolman'
+    } catch (error: unknown) {
+      this.spoolmanItems = []
+      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось загрузить библиотеку Spoolman'
+    } finally {
+      this.spoolmanLoading = false
+    }
+  }
+
+  async bindSpoolman (item: Ad5xSpoolmanLibraryItem): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || !this.spoolmanConnected || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().bindSpoolman(slot.slot, item.spoolman_spool_id)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || 'Spoolman отклонил привязку катушки'
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось привязать катушку Spoolman'
+    } finally { this.spoolmanBusy = false }
+  }
+
+  async unbindSpoolman (): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || slot.spool.spoolman_spool_id === null || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().unbindSpoolman(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || 'Spoolman отклонил снятие привязки'
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось снять привязку Spoolman'
+    } finally { this.spoolmanBusy = false }
+  }
+
+  async refreshSpoolman (): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || !this.spoolmanConnected || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().refreshSpoolman(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || 'Не удалось обновить данные Spoolman'
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось обновить данные Spoolman'
+    } finally { this.spoolmanBusy = false }
   }
 
   async runSlotAction (slot: Ad5xIfsSlot, action: Ad5xIfsAction): Promise<void> {

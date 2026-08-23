@@ -13,6 +13,43 @@ export interface Ad5xIfsActionResult {
   snapshot: Ad5xSnapshot
 }
 
+export interface Ad5xSpoolmanInventory {
+  remaining_g: number | null
+  remaining_length_mm: number | null
+  initial_g: number | null
+  used_g: number | null
+  used_length_mm: number | null
+  location: string
+  archived: boolean
+}
+
+export interface Ad5xSpoolmanLibraryItem {
+  spoolman_spool_id: number
+  spoolman_filament_id: number | null
+  spool: Ad5xIfsSpool
+  appearance: Ad5xIfsAppearance
+  inventory: Ad5xSpoolmanInventory
+}
+
+export interface Ad5xSpoolmanLibraryResult {
+  ok: boolean
+  query?: string
+  items: readonly Ad5xSpoolmanLibraryItem[]
+  count?: number
+  error?: string
+}
+
+export interface Ad5xSpoolmanMutationResult {
+  ok: boolean
+  slot?: number
+  spool_id?: number
+  result?: unknown
+  updated?: number
+  errors?: readonly unknown[]
+  error?: string
+  snapshot: Ad5xSnapshot
+}
+
 export interface Ad5xIfsAppearance {
   color_mode: Ad5xIfsColorMode
   colors: readonly string[]
@@ -160,6 +197,49 @@ function isAppearance (value: unknown): value is Ad5xIfsAppearance {
     ['solid', 'dual', 'tricolor', 'gradient', 'rainbow', 'special'].includes(value.color_mode) &&
     isStringArray(value.colors) &&
     typeof value.finish === 'string'
+}
+
+function isPositiveIntegerOrNull (value: unknown): value is number | null {
+  return value === null || (isInteger(value) && value > 0)
+}
+
+function isSpoolmanInventory (value: unknown): value is Ad5xSpoolmanInventory {
+  if (!isRecord(value)) return false
+  return isFiniteNumberOrNull(value.remaining_g) &&
+    isFiniteNumberOrNull(value.remaining_length_mm) &&
+    isFiniteNumberOrNull(value.initial_g) &&
+    isFiniteNumberOrNull(value.used_g) &&
+    isFiniteNumberOrNull(value.used_length_mm) &&
+    typeof value.location === 'string' &&
+    typeof value.archived === 'boolean'
+}
+
+function isSpoolmanLibraryItem (value: unknown): value is Ad5xSpoolmanLibraryItem {
+  return isRecord(value) &&
+    isInteger(value.spoolman_spool_id) && value.spoolman_spool_id > 0 &&
+    isPositiveIntegerOrNull(value.spoolman_filament_id) &&
+    isSpool(value.spool) &&
+    isAppearance(value.appearance) &&
+    isSpoolmanInventory(value.inventory)
+}
+
+export function isAd5xSpoolmanLibraryResult (value: unknown): value is Ad5xSpoolmanLibraryResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean' || !Array.isArray(value.items)) return false
+  if (!value.items.every(isSpoolmanLibraryItem)) return false
+  if (value.query !== undefined && typeof value.query !== 'string') return false
+  if (value.count !== undefined && (!isInteger(value.count) || value.count < 0)) return false
+  if (value.error !== undefined && typeof value.error !== 'string') return false
+  return value.ok || typeof value.error === 'string'
+}
+
+export function isAd5xSpoolmanMutationResult (value: unknown): value is Ad5xSpoolmanMutationResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean' || !isAd5xSnapshot(value.snapshot)) return false
+  if (value.slot !== undefined && (!isInteger(value.slot) || value.slot < 0 || value.slot > 4)) return false
+  if (value.spool_id !== undefined && (!isInteger(value.spool_id) || value.spool_id <= 0)) return false
+  if (value.updated !== undefined && (!isInteger(value.updated) || value.updated < 0)) return false
+  if (value.errors !== undefined && !Array.isArray(value.errors)) return false
+  if (value.error !== undefined && typeof value.error !== 'string') return false
+  return value.ok || typeof value.error === 'string'
 }
 
 function isPermissions (value: unknown): value is Ad5xIfsSlotPermissions {

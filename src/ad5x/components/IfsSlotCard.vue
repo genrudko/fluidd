@@ -127,6 +127,16 @@
       >
         Выгрузить
       </v-btn>
+      <v-btn
+        v-if="spoolmanAvailable"
+        small
+        text
+        data-test="slot-spoolman-manage"
+        :disabled="actionsLocked"
+        @click="requestSpoolman"
+      >
+        Spoolman
+      </v-btn>
     </v-card-actions>
   </v-card>
 </template>
@@ -148,6 +158,9 @@ export default class IfsSlotCard extends Vue {
   @Prop({ type: String, default: null })
   readonly actionBusy!: Ad5xIfsAction | null
 
+  @Prop({ type: Boolean, default: false })
+  readonly spoolmanAvailable!: boolean
+
   isActionLoading (action: Ad5xIfsAction): boolean {
     return this.actionBusy === action
   }
@@ -159,6 +172,11 @@ export default class IfsSlotCard extends Vue {
   requestAction (action: Ad5xIfsAction): void {
     if (this.isActionDisabled(action)) return
     this.$emit('action', action)
+  }
+
+  requestSpoolman (): void {
+    if (this.actionsLocked || !this.spoolmanAvailable) return
+    this.$emit('spoolman')
   }
 
   get materialLabel (): string {

@@ -7,8 +7,17 @@ import type {
   Ad5xZCalibrationReconcileResult,
   Ad5xZCalibrationSnapshot
 } from './types'
-import type { Ad5xIfsAction, Ad5xIfsActionResult } from './ifs'
-import { isAd5xIfsActionResult } from './ifs'
+import type {
+  Ad5xIfsAction,
+  Ad5xIfsActionResult,
+  Ad5xSpoolmanLibraryResult,
+  Ad5xSpoolmanMutationResult
+} from './ifs'
+import {
+  isAd5xIfsActionResult,
+  isAd5xSpoolmanLibraryResult,
+  isAd5xSpoolmanMutationResult
+} from './ifs'
 import {
   isAd5xSnapshot,
   isAd5xZCalibrationDiagnostics,
@@ -18,6 +27,10 @@ import {
 
 const SNAPSHOT_METHOD = 'server.plugins_ad5x.snapshot'
 const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
+const IFS_SPOOLMAN_LIBRARY_METHOD = 'server.plugins_ad5x.ifs.spoolman.library'
+const IFS_SPOOLMAN_BIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.bind'
+const IFS_SPOOLMAN_UNBIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.unbind'
+const IFS_SPOOLMAN_REFRESH_METHOD = 'server.plugins_ad5x.ifs.spoolman.refresh'
 const ZCAL_SNAPSHOT_METHOD = 'server.plugins_ad5x.z_calibration.snapshot'
 const ZCAL_RECONCILE_METHOD = 'server.plugins_ad5x.z_calibration.reconcile'
 const ZCAL_DIAGNOSTICS_METHOD = 'server.plugins_ad5x.z_calibration.diagnostics'
@@ -68,6 +81,49 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
       throw new Error('IFS action response is incompatible with API 1.0')
     }
 
+    return response
+  }
+
+  async getSpoolmanLibrary (query = ''): Promise<Ad5xSpoolmanLibraryResult> {
+    const response = await this.socket.emit(IFS_SPOOLMAN_LIBRARY_METHOD, {
+      params: { q: query.trim(), limit: 20, allow_archived: false }
+    })
+    if (!isAd5xSpoolmanLibraryResult(response)) {
+      throw new Error('Spoolman library response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async bindSpoolman (slot: number, spoolId: number): Promise<Ad5xSpoolmanMutationResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    if (!Number.isInteger(spoolId) || spoolId <= 0) throw new Error(`Invalid Spoolman spool id: ${spoolId}`)
+    const response = await this.socket.emit(IFS_SPOOLMAN_BIND_METHOD, {
+      params: { slot, spool_id: spoolId, allow_archived: false }
+    })
+    if (!isAd5xSpoolmanMutationResult(response) ||
+        (response.ok && (response.slot !== slot || response.spool_id !== spoolId))) {
+      throw new Error('Spoolman bind response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async unbindSpoolman (slot: number): Promise<Ad5xSpoolmanMutationResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    const response = await this.socket.emit(IFS_SPOOLMAN_UNBIND_METHOD, {
+      params: { slot, keep_metadata: true }
+    })
+    if (!isAd5xSpoolmanMutationResult(response) || (response.ok && response.slot !== slot)) {
+      throw new Error('Spoolman unbind response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async refreshSpoolman (slot: number): Promise<Ad5xSpoolmanMutationResult> {
+    if (!Number.isInteger(slot) || slot < 0 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    const response = await this.socket.emit(IFS_SPOOLMAN_REFRESH_METHOD, { params: { slot } })
+    if (!isAd5xSpoolmanMutationResult(response) || (response.ok && response.slot !== slot)) {
+      throw new Error('Spoolman refresh response is incompatible with API 1.0')
+    }
     return response
   }
 

@@ -152,6 +152,34 @@ describe('Ad5xApiClient', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
+  it('loads the normalized Spoolman library through Plugins AD5X', async () => {
+    const item = {
+      spoolman_spool_id: 42,
+      spoolman_filament_id: 7,
+      spool: { source: 'spoolman', brand: 'Test', series: '', name: 'PETG', material: 'PETG', variant: '', spoolman_id: 42, spoolman_spool_id: 42, spoolman_filament_id: 7, remaining_g: 500, remaining_length_mm: null, initial_g: 1000, used_g: 500, used_length_mm: null, location: 'Shelf', archived: false, nozzle_temp: 240, bed_temp: 70, orca_material: '', orca_filament_id: '', orca_setting_id: '' },
+      appearance: { color_mode: 'solid', colors: ['#112233'], finish: 'standard' },
+      inventory: { remaining_g: 500, remaining_length_mm: null, initial_g: 1000, used_g: 500, used_length_mm: null, location: 'Shelf', archived: false }
+    }
+    const payload = { ok: true, query: 'petg', items: [item], count: 1 }
+    const emit = vi.fn().mockResolvedValue(payload)
+    await expect(new Ad5xApiClient({ emit }).getSpoolmanLibrary(' petg ')).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.spoolman.library', { params: { q: 'petg', limit: 20, allow_archived: false } })
+  })
+
+  it('uses concrete Spoolman spool ids for bind, unbind and refresh', async () => {
+    const emit = vi.fn()
+      .mockResolvedValueOnce({ ok: true, slot: 2, spool_id: 42, snapshot: sharedSnapshot() })
+      .mockResolvedValueOnce({ ok: true, slot: 2, result: 'unbound', snapshot: sharedSnapshot() })
+      .mockResolvedValueOnce({ ok: true, slot: 2, updated: 1, errors: [], snapshot: sharedSnapshot() })
+    const client = new Ad5xApiClient({ emit })
+    await client.bindSpoolman(2, 42)
+    await client.unbindSpoolman(2)
+    await client.refreshSpoolman(2)
+    expect(emit).toHaveBeenNthCalledWith(1, 'server.plugins_ad5x.ifs.spoolman.bind', { params: { slot: 2, spool_id: 42, allow_archived: false } })
+    expect(emit).toHaveBeenNthCalledWith(2, 'server.plugins_ad5x.ifs.spoolman.unbind', { params: { slot: 2, keep_metadata: true } })
+    expect(emit).toHaveBeenNthCalledWith(3, 'server.plugins_ad5x.ifs.spoolman.refresh', { params: { slot: 2 } })
+  })
+
   it('uses the standalone Z Calibration snapshot RPC', async () => {
     const payload = zSnapshot()
     const emit = vi.fn().mockResolvedValue(payload)

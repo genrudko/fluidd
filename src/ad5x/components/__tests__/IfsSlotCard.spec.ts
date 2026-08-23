@@ -81,6 +81,12 @@ describe('IfsSlotCard', () => {
     expect(wrapper.emitted('action')).toEqual([['select_slot'], ['load_slot']])
   })
 
+  it('opens Spoolman management only when integration is available', async () => {
+    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), spoolmanAvailable: true } })
+    await wrapper.get('[data-test="slot-spoolman-manage"]').trigger('click')
+    expect(wrapper.emitted('spoolman')).toHaveLength(1)
+  })
+
   it('locks every action while another IFS operation is in flight', async () => {
     const wrapper = mount(IfsSlotCard, {
       vuetify,
