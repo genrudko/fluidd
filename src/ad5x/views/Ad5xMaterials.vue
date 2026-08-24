@@ -153,6 +153,7 @@
         <ifs-filament-path
           v-if="!ifsSuspended"
           :slots="slots"
+          :external-source="ifsModule.topology ? ifsModule.topology.external_source : null"
         />
 
         <v-row v-if="!ifsSuspended">

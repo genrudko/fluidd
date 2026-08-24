@@ -93,7 +93,7 @@
 
           <app-nav-item
             v-if="supportsAd5x"
-            icon="$codeJson"
+            icon="$ifs"
             :to="ad5xEntryRoute"
           >
             Plugins AD5X
