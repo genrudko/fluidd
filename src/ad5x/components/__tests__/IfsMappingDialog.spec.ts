@@ -96,6 +96,16 @@ function launchGate (ready = true): Ad5xIfsLaunchGate {
 }
 
 describe('IfsMappingDialog', () => {
+  it('requests one initial read-only dry-run when opened with a known provider leveling default', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: false, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    await wrapper.setProps({ value: true })
+    await wrapper.vm.$nextTick()
+    const changes = wrapper.emitted('change') || []
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.[0]).toEqual([1, 2, 3])
+    expect(changes[0]?.[1]).toBe(1)
+  })
+
   it('shows backend dry-run readiness without implying launch is enabled', async () => {
     const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', launchGate: launchGate(true) } })
     const vm = wrapper.vm as any

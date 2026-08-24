@@ -268,7 +268,12 @@ export default class IfsMappingDialog extends Vue {
 
   @Watch('value')
   onValueChanged (open: boolean): void {
-    if (open) this.resetMapping()
+    if (!open) return
+    this.resetMapping()
+    if (this.leveling === null || !this.mapping.length) return
+    this.$nextTick(() => {
+      if (!this.busy && this.value) this.emitChange()
+    })
   }
 
   @Watch('previewToken')
