@@ -89,6 +89,22 @@ describe('IfsPreprintPlan', () => {
     expect(vm.assignedColor(missing.rows[0])).toBe('')
   })
 
+  it('offers the edit action only when mapping is editable', async () => {
+    const editable = shallowMount(IfsPreprintPlan, {
+      propsData: { plan: plan(), slots: [slot(3)], editable: true, editing: false }
+    })
+    const button = editable.find('[data-test="preprint-edit"]')
+    expect(button.exists()).toBe(true)
+    button.vm.$emit('click')
+    await editable.vm.$nextTick()
+    expect(editable.emitted('edit')).toHaveLength(1)
+
+    const readonly = shallowMount(IfsPreprintPlan, {
+      propsData: { plan: plan(), slots: [slot(3)], editable: false, editing: false }
+    })
+    expect(readonly.find('[data-test="preprint-edit"]').exists()).toBe(false)
+  })
+
   it('keeps aggregate Z-Mod quality warnings global instead of assigning them to a tool', () => {
     const warningPlan = plan({ status: 'warning', warnings: ['weak_color', 'duplicate_slot'] })
     const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: warningPlan, slots: [slot(3)] } })

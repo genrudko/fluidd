@@ -88,6 +88,15 @@
             Печать: {{ ifsModule.print_state }}
           </v-chip>
           <v-chip
+            v-if="ifsModule.provider_mode"
+            small
+            label
+            outlined
+            data-test="ifs-provider-mode"
+          >
+            Z-Mod: {{ ifsModule.provider_mode }}
+          </v-chip>
+          <v-chip
             v-if="ifsModule.spoolman"
             small
             label
@@ -106,9 +115,21 @@
           </v-chip>
         </div>
 
-        <ifs-filament-path :slots="slots" />
+        <v-alert
+          v-if="ifsSuspended"
+          text
+          type="info"
+          data-test="ifs-maintenance-suspended"
+        >
+          Родной экран Flashforge сейчас владеет IFS. Plugins AD5X приостановил управление материалами, чтобы не конфликтовать с Z-Mod. После возврата в DISPLAY_OFF менеджер IFS снова станет доступен.
+        </v-alert>
 
-        <v-row>
+        <ifs-filament-path
+          v-if="!ifsSuspended"
+          :slots="slots"
+        />
+
+        <v-row v-if="!ifsSuspended">
           <v-col
             v-for="slot in slots"
             :key="`ifs-slot-${slot.slot}`"
@@ -130,8 +151,24 @@
         </v-row>
 
         <ifs-preprint-plan
+          v-if="!ifsSuspended"
           :plan="ifsModule.preprint_plan"
           :slots="slots"
+          :editable="canEditPreprint"
+          :editing="mappingBusy"
+          @edit="openMappingEditor"
+        />
+
+        <ifs-mapping-dialog
+          v-if="!ifsSuspended && mappingDisplayPlan"
+          v-model="mappingDialogOpen"
+          :preview="mappingPreview"
+          :preview-token="mappingPreviewToken"
+          :plan="mappingDisplayPlan"
+          :slots="slots"
+          :busy="mappingBusy"
+          :error="mappingError"
+          @change="validateMappingDraft"
         />
 
         <ifs-metadata-dialog
@@ -179,18 +216,19 @@
 import Vue from 'vue'
 import { Component, Watch } from 'vue-property-decorator'
 import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
-import type { Ad5xIfsAction, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
+import IfsMappingDialog from '@/ad5x/components/IfsMappingDialog.vue'
 import IfsPreprintPlan from '@/ad5x/components/IfsPreprintPlan.vue'
 import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
-@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
@@ -206,6 +244,12 @@ export default class Ad5xMaterials extends Vue {
   spoolmanLoading = false
   spoolmanBusy = false
   spoolmanError = ''
+  mappingDialogOpen = false
+  mappingBusy = false
+  mappingError = ''
+  mappingPreview: Ad5xIfsJobPreview | null = null
+  mappingPreviewToken = ''
+  mappingPlan: Ad5xIfsPreprintPlan | null = null
 
   get ad5xState (): Ad5xState {
     return getAd5xState(this.$store)
@@ -227,6 +271,23 @@ export default class Ad5xMaterials extends Vue {
     return [...(this.ifsModule?.slots ?? [])].sort((a, b) => a.slot - b.slot)
   }
 
+  get ifsSuspended (): boolean {
+    return Boolean(this.ifsModule?.maintenance_suspended || this.ifsModule?.provider_mode === 'native_display')
+  }
+
+  get canEditPreprint (): boolean {
+    return Boolean(
+      !this.ifsSuspended &&
+      this.ifsModule?.preprint_plan.available &&
+      this.ifsModule.preprint_plan.filename &&
+      this.ifsModule.operations?.preview_job !== false
+    )
+  }
+
+  get mappingDisplayPlan (): Ad5xIfsPreprintPlan | null {
+    return this.mappingPlan ?? this.ifsModule?.preprint_plan ?? null
+  }
+
   get notifiedRevision (): number {
     return this.ad5xState.notifiedRevision
   }
@@ -236,6 +297,7 @@ export default class Ad5xMaterials extends Vue {
       this.actionInFlight !== null ||
       this.metadataBusy ||
       this.spoolmanBusy ||
+      this.ifsSuspended ||
       this.ad5xState.apiStatus !== 'compatible' ||
       (this.ifsModule?.operation.state ?? 'idle') !== 'idle'
   }
@@ -373,6 +435,66 @@ export default class Ad5xMaterials extends Vue {
     } catch (error: unknown) {
       this.spoolmanError = error instanceof Error ? error.message : 'Не удалось обновить данные Spoolman'
     } finally { this.spoolmanBusy = false }
+  }
+
+  async openMappingEditor (): Promise<void> {
+    const filename = this.ifsModule?.preprint_plan.filename ?? ''
+    if (!this.canEditPreprint || !filename || this.mappingBusy) return
+
+    this.mappingBusy = true
+    this.mappingError = ''
+    this.actionError = ''
+    try {
+      const result = await this.apiClient().previewIfsJob(filename)
+      if (!result.ok || !result.job_preview || !result.preview_token || !result.snapshot) {
+        this.actionError = result.error || 'Backend отклонил предварительный анализ IFS'
+        return
+      }
+      this.mappingPreview = result.job_preview
+      this.mappingPreviewToken = result.preview_token
+      this.mappingPlan = getIfsModule(result.snapshot)?.preprint_plan ?? this.ifsModule?.preprint_plan ?? null
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      this.mappingDialogOpen = true
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error ? error.message : 'Не удалось получить предварительное назначение IFS'
+    } finally {
+      this.mappingBusy = false
+    }
+  }
+
+  async validateMappingDraft (resolvedToolMap: readonly number[]): Promise<void> {
+    if (!this.mappingPreview || !this.mappingPreviewToken || this.mappingBusy) return
+
+    this.mappingBusy = true
+    this.mappingError = ''
+    try {
+      const result = await this.apiClient().draftIfsJobMapping(
+        this.mappingPreviewToken,
+        resolvedToolMap
+      )
+      if (!result.ok || !result.mapping_draft || !result.preprint_plan) {
+        const stale = result.mapping_draft?.blockers.includes('stale_preview') ?? false
+        if (stale) {
+          this.mappingDialogOpen = false
+          this.mappingPreviewToken = ''
+          this.actionError = 'Данные файла изменились. Откройте назначение IFS снова для свежего анализа.'
+          return
+        }
+        this.mappingError = result.error || 'Backend отклонил черновик назначения IFS'
+        return
+      }
+      this.mappingPreview = {
+        ...this.mappingPreview,
+        resolved_tool_map: [...result.mapping_draft.resolved_tool_map]
+      }
+      this.mappingPlan = result.preprint_plan
+      // Draft validation is intentionally stateless: its snapshot still carries
+      // the provider plan, so applying it here would visually revert the manual map.
+    } catch (error: unknown) {
+      this.mappingError = error instanceof Error ? error.message : 'Не удалось проверить назначение IFS'
+    } finally {
+      this.mappingBusy = false
+    }
   }
 
   async runSlotAction (slot: Ad5xIfsSlot, action: Ad5xIfsAction): Promise<void> {

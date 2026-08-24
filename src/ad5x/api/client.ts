@@ -12,12 +12,16 @@ import type {
   Ad5xIfsActionResult,
   Ad5xIfsAppearance,
   Ad5xIfsMetadataResult,
+  Ad5xIfsJobPreviewResult,
+  Ad5xIfsMappingDraftResult,
   Ad5xIfsSpool,
   Ad5xSpoolmanLibraryResult,
   Ad5xSpoolmanMutationResult
 } from './ifs'
 import {
   isAd5xIfsActionResult,
+  isAd5xIfsJobPreviewResult,
+  isAd5xIfsMappingDraftResult,
   isAd5xIfsMetadataResult,
   isAd5xSpoolmanLibraryResult,
   isAd5xSpoolmanMutationResult
@@ -32,6 +36,8 @@ import {
 const SNAPSHOT_METHOD = 'server.plugins_ad5x.snapshot'
 const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
 const IFS_METADATA_METHOD = 'server.plugins_ad5x.ifs.metadata'
+const IFS_JOB_PREVIEW_METHOD = 'server.plugins_ad5x.ifs.job.preview'
+const IFS_MAPPING_DRAFT_METHOD = 'server.plugins_ad5x.ifs.job.mapping.draft'
 const IFS_SPOOLMAN_LIBRARY_METHOD = 'server.plugins_ad5x.ifs.spoolman.library'
 const IFS_SPOOLMAN_BIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.bind'
 const IFS_SPOOLMAN_UNBIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.unbind'
@@ -86,6 +92,36 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
       throw new Error('IFS action response is incompatible with API 1.0')
     }
 
+    return response
+  }
+
+  async previewIfsJob (filename: string): Promise<Ad5xIfsJobPreviewResult> {
+    const normalized = filename.trim()
+    if (!normalized) throw new Error('IFS preview filename is required')
+    const response = await this.socket.emit(IFS_JOB_PREVIEW_METHOD, {
+      params: { filename: normalized }
+    })
+    if (!isAd5xIfsJobPreviewResult(response)) {
+      throw new Error('IFS job preview response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async draftIfsJobMapping (
+    previewToken: string,
+    resolvedToolMap: readonly number[]
+  ): Promise<Ad5xIfsMappingDraftResult> {
+    const token = previewToken.trim()
+    if (!/^[0-9a-f]{64}$/i.test(token)) throw new Error('Invalid IFS preview token')
+    if (!resolvedToolMap.length || !resolvedToolMap.every(slot => Number.isInteger(slot) && slot >= 1 && slot <= 4)) {
+      throw new Error('Invalid IFS resolved tool map')
+    }
+    const response = await this.socket.emit(IFS_MAPPING_DRAFT_METHOD, {
+      params: { preview_token: token, resolved_tool_map: [...resolvedToolMap] }
+    })
+    if (!isAd5xIfsMappingDraftResult(response)) {
+      throw new Error('IFS mapping draft response is incompatible with API 1.0')
+    }
     return response
   }
 

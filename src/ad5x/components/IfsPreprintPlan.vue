@@ -7,6 +7,17 @@
     <v-card-title class="d-flex flex-wrap align-center py-3 preprint-title">
       <span>План печати</span>
       <v-spacer />
+      <v-btn
+        v-if="editable && plan.available && plan.filename"
+        text
+        small
+        :loading="editing"
+        :disabled="editing"
+        data-test="preprint-edit"
+        @click="$emit('edit')"
+      >
+        Изменить
+      </v-btn>
       <v-chip
         small
         label
@@ -179,6 +190,12 @@ export default class IfsPreprintPlan extends Vue {
 
   @Prop({ type: Array, required: true })
   readonly slots!: readonly Ad5xIfsSlot[]
+
+  @Prop({ type: Boolean, default: false })
+  readonly editable!: boolean
+
+  @Prop({ type: Boolean, default: false })
+  readonly editing!: boolean
 
   get statusLabel (): string {
     switch (this.plan.status) {

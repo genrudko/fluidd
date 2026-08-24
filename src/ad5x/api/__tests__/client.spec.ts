@@ -152,6 +152,93 @@ describe('Ad5xApiClient', () => {
     expect(emit).not.toHaveBeenCalled()
   })
 
+  it('loads a fresh IFS job preview with the backend preview token', async () => {
+    const preview = {
+      available: true,
+      source: 'zmod',
+      filename: 'demo.gcode',
+      requirements: [{ tool: 0, material: 'PLA', color: '#112233' }],
+      assignments: [{ tool: 0, slot: 1 }],
+      allowed_tool_count: 1,
+      resolved_tool_map: [1],
+      auto_assign: {},
+      messages: [],
+      error: ''
+    }
+    const payload = {
+      ok: true,
+      filename: 'demo.gcode',
+      job_preview: preview,
+      preview_token: 'a'.repeat(64),
+      snapshot: sharedSnapshot()
+    }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.previewIfsJob(' demo.gcode ')).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.preview', {
+      params: { filename: 'demo.gcode' }
+    })
+  })
+
+  it('submits the complete manual IFS mapping draft without starting a print', async () => {
+    const preprintPlan = {
+      available: true,
+      source: 'zmod',
+      filename: 'demo.gcode',
+      status: 'ready',
+      rows: [{
+        tool: 0,
+        requirement: { material: 'PLA', color: '#112233' },
+        assignment: { slot: 2, present: true, metadata_status: 'assigned', spool: {}, appearance: {} },
+        state: 'ready'
+      }],
+      warnings: [],
+      summary: { required_tools: 1, assigned_tools: 1, ready_tools: 1 },
+      auto_assign: {},
+      messages: [],
+      error: ''
+    }
+    const payload = {
+      ok: true,
+      mapping_draft: {
+        status: 'ready',
+        mapping_source: 'manual',
+        filename: 'demo.gcode',
+        preview_token: 'a'.repeat(64),
+        draft_token: 'b'.repeat(64),
+        allowed_tool_count: 1,
+        resolved_tool_map: [2],
+        provider_resolved_tool_map: [1],
+        assignments: [{ tool: 0, slot: 2 }],
+        modified: true,
+        blockers: [],
+        warnings: []
+      },
+      provider_auto_assign: {},
+      preprint_plan: preprintPlan,
+      launch_gate: { candidate: true, write_enabled: false },
+      snapshot: sharedSnapshot()
+    }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.draftIfsJobMapping('a'.repeat(64), [2])).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.mapping.draft', {
+      params: { preview_token: 'a'.repeat(64), resolved_tool_map: [2] }
+    })
+  })
+
+  it('rejects invalid IFS preview tokens and mappings before touching the socket', async () => {
+    const emit = vi.fn()
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.previewIfsJob('   ')).rejects.toThrow('IFS preview filename is required')
+    await expect(client.draftIfsJobMapping('bad-token', [1])).rejects.toThrow('Invalid IFS preview token')
+    await expect(client.draftIfsJobMapping('a'.repeat(64), [0])).rejects.toThrow('Invalid IFS resolved tool map')
+    expect(emit).not.toHaveBeenCalled()
+  })
+
   it('updates and clears manual IFS metadata through the canonical backend endpoint', async () => {
     const spool = { source: 'flashforge', brand: 'Test', series: '', name: 'PETG', material: 'PETG', variant: '', spoolman_id: null, spoolman_spool_id: null, spoolman_filament_id: null, remaining_g: 500, remaining_length_mm: null, initial_g: 1000, used_g: 500, used_length_mm: null, location: '', archived: false, nozzle_temp: 240, bed_temp: 70, orca_material: '', orca_filament_id: 'keep', orca_setting_id: '' }
     const appearance = { color_mode: 'solid' as const, colors: ['#112233'], finish: 'matte' }

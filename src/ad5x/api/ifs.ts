@@ -68,6 +68,69 @@ export interface Ad5xIfsPreprintPlan {
   error: string
 }
 
+export interface Ad5xIfsJobPreview {
+  available: boolean
+  source: string
+  filename: string
+  requirements: readonly Readonly<Record<string, unknown>>[]
+  assignments: readonly Readonly<Record<string, unknown>>[]
+  allowed_tool_count: number
+  resolved_tool_map: readonly number[]
+  auto_assign: Readonly<Record<string, unknown>>
+  messages: readonly string[]
+  error: string
+}
+
+export interface Ad5xIfsJobPreviewResult {
+  ok: boolean
+  filename: string
+  error?: string
+  job_preview?: Ad5xIfsJobPreview
+  preview_token?: string
+  snapshot?: Ad5xSnapshot
+}
+
+export interface Ad5xIfsMappingDraft {
+  status: string
+  mapping_source: string
+  filename: string
+  preview_token: string
+  draft_token: string
+  allowed_tool_count: number
+  resolved_tool_map: readonly number[]
+  provider_resolved_tool_map: readonly number[]
+  assignments: readonly Readonly<Record<string, unknown>>[]
+  modified: boolean
+  blockers: readonly string[]
+  warnings: readonly string[]
+}
+
+export interface Ad5xIfsMappingDraftResult {
+  ok: boolean
+  error?: string
+  mapping_draft?: Ad5xIfsMappingDraft
+  provider_auto_assign?: Readonly<Record<string, unknown>>
+  preprint_plan?: Ad5xIfsPreprintPlan
+  launch_gate?: Readonly<Record<string, unknown>>
+  snapshot: Ad5xSnapshot
+}
+
+export interface Ad5xIfsProviderState {
+  name: string
+  mode: string
+  supported_modes: readonly string[]
+  ifs_manager_supported: boolean
+  maintenance_suspended: boolean
+}
+
+export interface Ad5xIfsOperations {
+  select_slot: boolean
+  load_slot: boolean
+  unload_slot: boolean
+  manage: boolean
+  preview_job?: boolean
+}
+
 export interface Ad5xSpoolmanInventory {
   remaining_g: number | null
   remaining_length_mm: number | null
@@ -180,6 +243,7 @@ export interface Ad5xIfsSpoolmanStatus {
 }
 
 export interface Ad5xIfsModule {
+  available?: boolean
   state: string
   active_slot: number
   slots: readonly Ad5xIfsSlot[]
@@ -189,6 +253,11 @@ export interface Ad5xIfsModule {
   capabilities: Readonly<Record<string, unknown>>
   write_blocked_reason: string
   preprint_plan: Ad5xIfsPreprintPlan
+  job_preview?: Ad5xIfsJobPreview
+  provider_mode?: string
+  maintenance_suspended?: boolean
+  provider?: Ad5xIfsProviderState
+  operations?: Ad5xIfsOperations
   spoolman?: Ad5xIfsSpoolmanStatus
 }
 
@@ -378,6 +447,60 @@ export function isAd5xIfsPreprintPlan (value: unknown): value is Ad5xIfsPreprint
   return true
 }
 
+function isSlotMap (value: unknown): value is number[] {
+  return Array.isArray(value) && value.every(slot => isInteger(slot) && slot >= 1 && slot <= 4)
+}
+
+function isJobPreview (value: unknown): value is Ad5xIfsJobPreview {
+  return isRecord(value) &&
+    typeof value.available === 'boolean' &&
+    typeof value.source === 'string' &&
+    typeof value.filename === 'string' &&
+    Array.isArray(value.requirements) &&
+    Array.isArray(value.assignments) &&
+    isInteger(value.allowed_tool_count) && value.allowed_tool_count >= 0 &&
+    isSlotMap(value.resolved_tool_map) &&
+    isRecord(value.auto_assign) &&
+    isStringArray(value.messages) &&
+    typeof value.error === 'string'
+}
+
+export function isAd5xIfsJobPreviewResult (value: unknown): value is Ad5xIfsJobPreviewResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean' || typeof value.filename !== 'string') return false
+  if (!value.ok) return typeof value.error === 'string'
+  return isJobPreview(value.job_preview) &&
+    typeof value.preview_token === 'string' && /^[0-9a-f]{64}$/i.test(value.preview_token) &&
+    isAd5xSnapshot(value.snapshot)
+}
+
+function isMappingDraft (value: unknown): value is Ad5xIfsMappingDraft {
+  return isRecord(value) &&
+    typeof value.status === 'string' &&
+    typeof value.mapping_source === 'string' &&
+    typeof value.filename === 'string' &&
+    typeof value.preview_token === 'string' &&
+    typeof value.draft_token === 'string' &&
+    isInteger(value.allowed_tool_count) && value.allowed_tool_count >= 0 &&
+    isSlotMap(value.resolved_tool_map) &&
+    isSlotMap(value.provider_resolved_tool_map) &&
+    Array.isArray(value.assignments) &&
+    typeof value.modified === 'boolean' &&
+    isStringArray(value.blockers) &&
+    isStringArray(value.warnings)
+}
+
+export function isAd5xIfsMappingDraftResult (value: unknown): value is Ad5xIfsMappingDraftResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean' || !isAd5xSnapshot(value.snapshot)) return false
+  if (!value.ok) {
+    return typeof value.error === 'string' &&
+      (value.mapping_draft === undefined || isMappingDraft(value.mapping_draft))
+  }
+  return isMappingDraft(value.mapping_draft) &&
+    isRecord(value.provider_auto_assign) &&
+    isAd5xIfsPreprintPlan(value.preprint_plan) &&
+    isRecord(value.launch_gate)
+}
+
 function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {
   if (!isRecord(value)) return false
 
@@ -395,6 +518,24 @@ function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {
     typeof value.error === 'string'
 }
 
+function isProviderState (value: unknown): value is Ad5xIfsProviderState {
+  return isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.mode === 'string' &&
+    isStringArray(value.supported_modes) &&
+    typeof value.ifs_manager_supported === 'boolean' &&
+    typeof value.maintenance_suspended === 'boolean'
+}
+
+function isIfsOperations (value: unknown): value is Ad5xIfsOperations {
+  return isRecord(value) &&
+    typeof value.select_slot === 'boolean' &&
+    typeof value.load_slot === 'boolean' &&
+    typeof value.unload_slot === 'boolean' &&
+    typeof value.manage === 'boolean' &&
+    (value.preview_job === undefined || typeof value.preview_job === 'boolean')
+}
+
 export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (!isRecord(value)) return false
   if (typeof value.state !== 'string') return false
@@ -406,6 +547,11 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (!isRecord(value.capabilities)) return false
   if (typeof value.write_blocked_reason !== 'string') return false
   if (!isAd5xIfsPreprintPlan(value.preprint_plan)) return false
+  if (value.job_preview !== undefined && !isJobPreview(value.job_preview)) return false
+  if (value.provider_mode !== undefined && typeof value.provider_mode !== 'string') return false
+  if (value.maintenance_suspended !== undefined && typeof value.maintenance_suspended !== 'boolean') return false
+  if (value.provider !== undefined && !isProviderState(value.provider)) return false
+  if (value.operations !== undefined && !isIfsOperations(value.operations)) return false
   if (value.spoolman !== undefined && !isSpoolmanStatus(value.spoolman)) return false
 
   return true
