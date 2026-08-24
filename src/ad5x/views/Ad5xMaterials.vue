@@ -10,6 +10,32 @@
         </div>
       </div>
       <v-spacer />
+      <v-btn-toggle
+        v-model="viewMode"
+        mandatory
+        dense
+        class="mr-2"
+        data-test="ifs-view-mode"
+      >
+        <v-btn
+          small
+          value="auto"
+        >
+          Auto
+        </v-btn>
+        <v-btn
+          small
+          value="hybrid"
+        >
+          Hybrid
+        </v-btn>
+        <v-btn
+          small
+          value="expert"
+        >
+          Expert
+        </v-btn>
+      </v-btn-toggle>
       <v-btn
         text
         :to="{ name: 'ad5x' }"
@@ -151,8 +177,9 @@
         </v-row>
 
         <ifs-preprint-plan
-          v-if="!ifsSuspended"
+          v-if="!ifsSuspended && showPreprintPlan"
           :plan="ifsModule.preprint_plan"
+          :compact="preprintCompact"
           :slots="slots"
           :editable="canEditPreprint"
           :editing="mappingBusy"
@@ -228,6 +255,9 @@ import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
 
+type IfsViewMode = 'auto' | 'hybrid' | 'expert'
+const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
+
 @Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
@@ -250,6 +280,22 @@ export default class Ad5xMaterials extends Vue {
   mappingPreview: Ad5xIfsJobPreview | null = null
   mappingPreviewToken = ''
   mappingPlan: Ad5xIfsPreprintPlan | null = null
+  viewMode: IfsViewMode = 'hybrid'
+
+  get showPreprintPlan (): boolean {
+    const plan = this.ifsModule?.preprint_plan
+    return Boolean(plan && (this.viewMode !== 'auto' || !plan.available || plan.status !== 'ready'))
+  }
+
+  get preprintCompact (): boolean { return this.viewMode !== 'expert' }
+
+  @Watch('viewMode')
+  onViewModeChanged (mode: IfsViewMode): void { localStorage.setItem(IFS_VIEW_MODE_KEY, mode) }
+
+  restoreViewMode (): void {
+    const saved = localStorage.getItem(IFS_VIEW_MODE_KEY)
+    if (saved === 'auto' || saved === 'hybrid' || saved === 'expert') this.viewMode = saved
+  }
 
   get ad5xState (): Ad5xState {
     return getAd5xState(this.$store)
@@ -546,6 +592,7 @@ export default class Ad5xMaterials extends Vue {
   }
 
   async created (): Promise<void> {
+    this.restoreViewMode()
     if (!this.supportsSharedBackend) {
       await initializeAd5x(this.$store, false)
       return

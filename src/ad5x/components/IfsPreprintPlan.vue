@@ -88,6 +88,7 @@
           v-for="row in plan.rows"
           :key="`tool-${row.tool}`"
           class="preprint-row"
+          :class="{ 'd-none': compact }"
           :data-test="`preprint-row-${row.tool}`"
         >
           <div class="preprint-tool">
@@ -164,7 +165,10 @@
           </v-chip>
         </div>
 
-        <div class="text-caption text--secondary mt-3">
+        <div
+          v-if="!compact"
+          class="text-caption text--secondary mt-3"
+        >
           Назначения получены из Plugins AD5X / Z-Mod. Изменение карты и запуск печати на этом экране пока отключены.
         </div>
       </template>
@@ -196,6 +200,9 @@ export default class IfsPreprintPlan extends Vue {
 
   @Prop({ type: Boolean, default: false })
   readonly editing!: boolean
+
+  @Prop({ type: Boolean, default: false })
+  readonly compact!: boolean
 
   get statusLabel (): string {
     switch (this.plan.status) {

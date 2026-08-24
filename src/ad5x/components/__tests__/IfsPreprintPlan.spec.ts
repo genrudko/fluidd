@@ -105,6 +105,12 @@ describe('IfsPreprintPlan', () => {
     expect(readonly.find('[data-test="preprint-edit"]').exists()).toBe(false)
   })
 
+  it('keeps summary visible but collapses tool rows in compact mode', () => {
+    const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: plan(), slots: [slot(3)], compact: true } })
+    expect(wrapper.find('[data-test="preprint-status"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="preprint-row-0"]').classes()).toContain('d-none')
+  })
+
   it('keeps aggregate Z-Mod quality warnings global instead of assigning them to a tool', () => {
     const warningPlan = plan({ status: 'warning', warnings: ['weak_color', 'duplicate_slot'] })
     const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: warningPlan, slots: [slot(3)] } })
