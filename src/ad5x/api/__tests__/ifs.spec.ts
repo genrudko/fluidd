@@ -85,6 +85,16 @@ describe('AD5X IFS frontend contract', () => {
             stall_mask: 10,
             runtime_active_slot: 1
           },
+          recovery: {
+            provider: 'zmod',
+            read_only: true,
+            execution_enabled: false,
+            hardware_accepted: false,
+            status: 'driver_error',
+            evidence: { module_state: 'ready', state_code: 127, driver_error: true, need_insert: false, insert_slot: 0 },
+            primitives: [{ id: 'reset_driver', provider_command: 'IFS_F15', scope: 'driver', source_verified: true, execution_enabled: false, hardware_accepted: false }],
+            provider_sequences: { driver_error_retry: ['IFS_F15'], timeout_cleanup: ['IFS_F112', 'IFS_F18'] }
+          },
           equivalent_spool: {
             provider: 'zmod',
             provider_command: 'ANALOG_PRUTOK',
@@ -130,6 +140,8 @@ describe('AD5X IFS frontend contract', () => {
     expect(getIfsModule(snapshot)?.interoperability?.orca_lane_data.state).toBe('in_sync')
     expect(getIfsModule(snapshot)?.equivalent_spool?.next_slot).toBe(2)
     expect(getIfsModule(snapshot)?.diagnostics?.stall_mask).toBe(10)
+    expect(getIfsModule(snapshot)?.recovery?.execution_enabled).toBe(false)
+    expect(getIfsModule(snapshot)?.recovery?.primitives[0].provider_command).toBe('IFS_F15')
   })
 
   it('derives display color and remaining percentage from canonical metadata', () => {

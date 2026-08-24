@@ -190,6 +190,12 @@
           :filament-at-toolhead="ifsModule.filament_at_toolhead"
         />
 
+        <ifs-recovery-card
+          v-if="!ifsSuspended && ifsModule.recovery && (viewMode === 'expert' || ifsModule.recovery.status !== 'idle')"
+          :preview="ifsModule.recovery"
+          :expert="viewMode === 'expert'"
+        />
+
         <ifs-interoperability-card
           v-if="!ifsSuspended && viewMode !== 'auto' && ifsModule.topology && ifsModule.interoperability"
           :topology="ifsModule.topology"
@@ -275,6 +281,7 @@ import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsDiagnosticsCard from '@/ad5x/components/IfsDiagnosticsCard.vue'
 import IfsEquivalentSpoolCard from '@/ad5x/components/IfsEquivalentSpoolCard.vue'
 import IfsInteroperabilityCard from '@/ad5x/components/IfsInteroperabilityCard.vue'
+import IfsRecoveryCard from '@/ad5x/components/IfsRecoveryCard.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
 import IfsMappingDialog from '@/ad5x/components/IfsMappingDialog.vue'
@@ -287,7 +294,7 @@ import type { Ad5xState } from '@/ad5x/store/types'
 type IfsViewMode = 'auto' | 'hybrid' | 'expert'
 const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
 
-@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsInteroperabilityCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsInteroperabilityCard, IfsRecoveryCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null

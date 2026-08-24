@@ -317,6 +317,36 @@ export interface Ad5xIfsEquivalentSpoolPreview {
   reason: string
 }
 
+export interface Ad5xIfsRecoveryEvidence {
+  module_state: string
+  state_code: number
+  driver_error: boolean
+  need_insert: boolean
+  insert_slot: number
+}
+
+export interface Ad5xIfsRecoveryPrimitive {
+  id: string
+  provider_command: string
+  scope: string
+  source_verified: boolean
+  execution_enabled: boolean
+  hardware_accepted: boolean
+  parameter?: string
+  slot_range?: readonly number[]
+}
+
+export interface Ad5xIfsRecoveryPreview {
+  provider: string
+  read_only: boolean
+  execution_enabled: boolean
+  hardware_accepted: boolean
+  status: string
+  evidence: Ad5xIfsRecoveryEvidence
+  primitives: readonly Ad5xIfsRecoveryPrimitive[]
+  provider_sequences: Readonly<Record<string, readonly string[]>>
+}
+
 export interface Ad5xIfsDiagnostics {
   silk_mask: number
   raw_channel: number
@@ -376,6 +406,7 @@ export interface Ad5xIfsModule {
   topology?: Ad5xIfsTopology
   interoperability?: Ad5xIfsInteroperability
   diagnostics?: Ad5xIfsDiagnostics
+  recovery?: Ad5xIfsRecoveryPreview
   equivalent_spool?: Ad5xIfsEquivalentSpoolPreview
   provider?: Ad5xIfsProviderState
   operations?: Ad5xIfsOperations
@@ -729,6 +760,14 @@ function isEquivalentSpoolPreview (value: unknown): value is Ad5xIfsEquivalentSp
   return value.candidates.every(candidate => isRecord(candidate) && isInteger(candidate.slot) && typeof candidate.present === 'boolean' && typeof candidate.material === 'string' && typeof candidate.color === 'string' && typeof candidate.eligible === 'boolean' && isStringArray(candidate.blockers))
 }
 
+function isRecoveryPreview (value: unknown): value is Ad5xIfsRecoveryPreview {
+  if (!isRecord(value) || typeof value.provider !== 'string' || typeof value.read_only !== 'boolean' || typeof value.execution_enabled !== 'boolean' || typeof value.hardware_accepted !== 'boolean' || typeof value.status !== 'string') return false
+  if (!isRecord(value.evidence) || typeof value.evidence.module_state !== 'string' || !isInteger(value.evidence.state_code) || typeof value.evidence.driver_error !== 'boolean' || typeof value.evidence.need_insert !== 'boolean' || !isInteger(value.evidence.insert_slot)) return false
+  if (!Array.isArray(value.primitives) || !value.primitives.every(item => isRecord(item) && typeof item.id === 'string' && typeof item.provider_command === 'string' && typeof item.scope === 'string' && typeof item.source_verified === 'boolean' && typeof item.execution_enabled === 'boolean' && typeof item.hardware_accepted === 'boolean' && (item.parameter === undefined || typeof item.parameter === 'string') && (item.slot_range === undefined || (Array.isArray(item.slot_range) && item.slot_range.every(isInteger))))) return false
+  if (!isRecord(value.provider_sequences)) return false
+  return Object.values(value.provider_sequences).every(isStringArray)
+}
+
 function isIfsDiagnostics (value: unknown): value is Ad5xIfsDiagnostics {
   return isRecord(value) && isInteger(value.silk_mask) && isInteger(value.raw_channel) && isInteger(value.insert_slot) && typeof value.need_insert === 'boolean' && isInteger(value.stall_mask) && isInteger(value.runtime_active_slot)
 }
@@ -738,6 +777,7 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (typeof value.state !== 'string') return false
   if (value.state_code !== undefined && !isInteger(value.state_code)) return false
   if (value.diagnostics !== undefined && !isIfsDiagnostics(value.diagnostics)) return false
+  if (value.recovery !== undefined && !isRecoveryPreview(value.recovery)) return false
   if (!isInteger(value.active_slot)) return false
   if (!Array.isArray(value.slots) || !value.slots.every(isSlot)) return false
   if (!(value.filament_at_toolhead === null || typeof value.filament_at_toolhead === 'boolean')) return false
