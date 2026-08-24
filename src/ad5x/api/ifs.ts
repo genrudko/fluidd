@@ -317,9 +317,19 @@ export interface Ad5xIfsEquivalentSpoolPreview {
   reason: string
 }
 
+export interface Ad5xIfsDiagnostics {
+  silk_mask: number
+  raw_channel: number
+  insert_slot: number
+  need_insert: boolean
+  stall_mask: number
+  runtime_active_slot: number
+}
+
 export interface Ad5xIfsModule {
   available?: boolean
   state: string
+  state_code?: number
   active_slot: number
   slots: readonly Ad5xIfsSlot[]
   filament_at_toolhead: boolean | null
@@ -331,6 +341,7 @@ export interface Ad5xIfsModule {
   job_preview?: Ad5xIfsJobPreview
   provider_mode?: string
   maintenance_suspended?: boolean
+  diagnostics?: Ad5xIfsDiagnostics
   equivalent_spool?: Ad5xIfsEquivalentSpoolPreview
   provider?: Ad5xIfsProviderState
   operations?: Ad5xIfsOperations
@@ -672,9 +683,15 @@ function isEquivalentSpoolPreview (value: unknown): value is Ad5xIfsEquivalentSp
   return value.candidates.every(candidate => isRecord(candidate) && isInteger(candidate.slot) && typeof candidate.present === 'boolean' && typeof candidate.material === 'string' && typeof candidate.color === 'string' && typeof candidate.eligible === 'boolean' && isStringArray(candidate.blockers))
 }
 
+function isIfsDiagnostics (value: unknown): value is Ad5xIfsDiagnostics {
+  return isRecord(value) && isInteger(value.silk_mask) && isInteger(value.raw_channel) && isInteger(value.insert_slot) && typeof value.need_insert === 'boolean' && isInteger(value.stall_mask) && isInteger(value.runtime_active_slot)
+}
+
 export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (!isRecord(value)) return false
   if (typeof value.state !== 'string') return false
+  if (value.state_code !== undefined && !isInteger(value.state_code)) return false
+  if (value.diagnostics !== undefined && !isIfsDiagnostics(value.diagnostics)) return false
   if (!isInteger(value.active_slot)) return false
   if (!Array.isArray(value.slots) || !value.slots.every(isSlot)) return false
   if (!(value.filament_at_toolhead === null || typeof value.filament_at_toolhead === 'boolean')) return false

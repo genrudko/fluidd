@@ -52,6 +52,7 @@ describe('AD5X IFS frontend contract', () => {
       modules: {
         ifs: {
           state: 'ready',
+          state_code: 5,
           active_slot: 1,
           slots: [slot()],
           filament_at_toolhead: true,
@@ -75,6 +76,14 @@ describe('AD5X IFS frontend contract', () => {
             auto_assign: {},
             messages: [],
             error: ''
+          },
+          diagnostics: {
+            silk_mask: 5,
+            raw_channel: 3,
+            insert_slot: 2,
+            need_insert: true,
+            stall_mask: 10,
+            runtime_active_slot: 1
           },
           equivalent_spool: {
             provider: 'zmod',
@@ -110,6 +119,7 @@ describe('AD5X IFS frontend contract', () => {
     expect(getIfsModule(snapshot)?.slots[0].spool.spoolman_spool_id).toBe(42)
     expect(getIfsModule(snapshot)?.preprint_plan.rows[0].assignment?.slot).toBe(1)
     expect(getIfsModule(snapshot)?.equivalent_spool?.next_slot).toBe(2)
+    expect(getIfsModule(snapshot)?.diagnostics?.stall_mask).toBe(10)
   })
 
   it('derives display color and remaining percentage from canonical metadata', () => {

@@ -182,6 +182,14 @@
           :compact="equivalentCompact"
         />
 
+        <ifs-diagnostics-card
+          v-if="!ifsSuspended && viewMode === 'expert' && ifsModule.diagnostics"
+          :diagnostics="ifsModule.diagnostics"
+          :state-code="ifsModule.state_code ?? 0"
+          :active-slot="ifsModule.active_slot"
+          :filament-at-toolhead="ifsModule.filament_at_toolhead"
+        />
+
         <ifs-preprint-plan
           v-if="!ifsSuspended && showPreprintPlan"
           :plan="ifsModule.preprint_plan"
@@ -257,6 +265,7 @@ import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
 import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
+import IfsDiagnosticsCard from '@/ad5x/components/IfsDiagnosticsCard.vue'
 import IfsEquivalentSpoolCard from '@/ad5x/components/IfsEquivalentSpoolCard.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
@@ -270,7 +279,7 @@ import type { Ad5xState } from '@/ad5x/store/types'
 type IfsViewMode = 'auto' | 'hybrid' | 'expert'
 const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
 
-@Component({ components: { IfsFilamentPath, IfsEquivalentSpoolCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
