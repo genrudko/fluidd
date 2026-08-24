@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
 import vuetify from '@/plugins/vuetify'
 import type { Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import IfsSpoolmanDialog from '../IfsSpoolmanDialog.vue'
@@ -7,15 +8,16 @@ function slot (): Ad5xIfsSlot { return { slot: 2, present: true, active: false, 
 function item (): Ad5xSpoolmanLibraryItem { return { spoolman_spool_id: 99, spoolman_filament_id: 8, spool: { ...slot().spool, spoolman_id: 99, spoolman_spool_id: 99, spoolman_filament_id: 8, name: 'PLA Red', material: 'PLA' }, appearance: { color_mode: 'solid', colors: ['#FF0000'], finish: 'standard' }, inventory: { remaining_g: 700, remaining_length_mm: null, initial_g: 1000, used_g: 300, used_length_mm: null, location: 'Rack', archived: false } } }
 
 describe('IfsSpoolmanDialog', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('shows current binding and emits the selected concrete spool item', async () => {
-    const wrapper = mount(IfsSpoolmanDialog, { vuetify, propsData: { value: true, slotData: slot(), connected: true, items: [item()] } })
+    const wrapper = mount(IfsSpoolmanDialog, { vuetify, i18n, propsData: { value: true, slotData: slot(), connected: true, items: [item()] } })
     expect(wrapper.get('[data-test="spoolman-current-id"]').text()).toContain('42')
     await wrapper.get('[data-test="spoolman-bind"]').trigger('click')
     expect(wrapper.emitted('bind')?.[0]?.[0]).toEqual(item())
   })
 
   it('locks Spoolman writes while IFS is busy', async () => {
-    const wrapper = mount(IfsSpoolmanDialog, { vuetify, propsData: { value: true, slotData: slot(), connected: true, items: [item()], locked: true } })
+    const wrapper = mount(IfsSpoolmanDialog, { vuetify, i18n, propsData: { value: true, slotData: slot(), connected: true, items: [item()], locked: true } })
     await wrapper.get('[data-test="spoolman-bind"]').trigger('click')
     await wrapper.get('[data-test="spoolman-unbind"]').trigger('click')
     expect(wrapper.emitted('bind')).toBeUndefined()
@@ -23,7 +25,7 @@ describe('IfsSpoolmanDialog', () => {
   })
 
   it('blocks network operations offline but still allows local unbind', async () => {
-    const wrapper = mount(IfsSpoolmanDialog, { vuetify, propsData: { value: true, slotData: slot(), connected: false, items: [] } })
+    const wrapper = mount(IfsSpoolmanDialog, { vuetify, i18n, propsData: { value: true, slotData: slot(), connected: false, items: [] } })
     expect(wrapper.get('[data-test="spoolman-search"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-test="spoolman-refresh"]').attributes('disabled')).toBeDefined()
     await wrapper.get('[data-test="spoolman-unbind"]').trigger('click')

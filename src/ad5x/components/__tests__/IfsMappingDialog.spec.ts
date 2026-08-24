@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
 import IfsMappingDialog from '../IfsMappingDialog.vue'
 import type { Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsPreprintPlan, Ad5xIfsSlot } from '@/ad5x/api/ifs'
 
@@ -97,8 +98,9 @@ function launchGate (ready = true): Ad5xIfsLaunchGate {
 }
 
 describe('IfsMappingDialog', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('requests one initial read-only dry-run when opened with a known provider leveling default', async () => {
-    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: false, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: false, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
     await wrapper.setProps({ value: true })
     await wrapper.vm.$nextTick()
     const changes = wrapper.emitted('change') || []
@@ -108,11 +110,11 @@ describe('IfsMappingDialog', () => {
   })
 
   it('shows backend dry-run readiness without implying launch is enabled', async () => {
-    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', launchGate: launchGate(true) } })
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', launchGate: launchGate(true) } })
     const vm = wrapper.vm as any
     expect(vm.dryRunAlertType).toBe('success')
-    expect(vm.dryRunStatusText).toContain('структурно готов')
-    expect(vm.dryRunStatusText).toContain('аппаратной приёмки')
+    expect(vm.dryRunStatusText).toContain('structurally ready')
+    expect(vm.dryRunStatusText).toContain('hardware acceptance')
 
     await wrapper.setProps({ launchGate: launchGate(false) })
     expect(vm.dryRunAlertType).toBe('warning')
@@ -120,7 +122,7 @@ describe('IfsMappingDialog', () => {
   })
 
   it('emits a read-only final prepare only with a validated draft token and explicit leveling', async () => {
-    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), draftToken: 'b'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1, launchGate: launchGate(true), prepared: false } })
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), draftToken: 'b'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1, launchGate: launchGate(true), prepared: false } })
     const vm = wrapper.vm as any
     vm.resetMapping()
     expect(vm.canPrepare).toBe(true)
@@ -128,11 +130,12 @@ describe('IfsMappingDialog', () => {
     expect(wrapper.emitted('prepare')?.[0]?.[0]).toEqual([1, 2, 3])
     expect(wrapper.emitted('prepare')?.[0]?.[1]).toBe(1)
     await wrapper.setProps({ prepared: true })
-    expect(vm.dryRunStatusText).toContain('Финальная проверка пройдена')
+    expect(vm.dryRunStatusText).toContain('Final validation passed')
   })
 
   it('preserves hidden tools when editing one visible T-to-slot assignment', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
       propsData: {
         value: true,
         preview: preview(),
@@ -152,6 +155,7 @@ describe('IfsMappingDialog', () => {
 
   it('labels live and empty physical slots from normalized IFS state', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
       propsData: {
         value: true,
         preview: preview(),
@@ -164,12 +168,12 @@ describe('IfsMappingDialog', () => {
     })
     const vm = wrapper.vm as any
     expect(vm.slotItems.find((item: any) => item.value === 1).text).toContain('Spool 1')
-    expect(vm.slotItems.find((item: any) => item.value === 2).text).toContain('пусто')
-    expect(vm.slotItems.find((item: any) => item.value === 4).text).toContain('недоступен')
+    expect(vm.slotItems.find((item: any) => item.value === 2).text).toContain('empty')
+    expect(vm.slotItems.find((item: any) => item.value === 4).text).toContain('unavailable')
   })
 
   it('restores the original automatic proposal after a manual draft edit', () => {
-    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '' } })
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '' } })
     const vm = wrapper.vm as any
     vm.resetMapping()
     vm.updateSlot(0, 2)
@@ -182,11 +186,11 @@ describe('IfsMappingDialog', () => {
   })
 
   it('starts from the provider leveling default and emits an explicit dry-run choice', () => {
-    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
     const vm = wrapper.vm as any
     vm.resetMapping()
     expect(vm.leveling).toBe(1)
-    expect(vm.providerLevelingLabel).toContain('снять карту')
+    expect(vm.providerLevelingLabel).toContain('probe the bed mesh')
     vm.updateLeveling(0)
     const changes = wrapper.emitted('change') || []
     expect(changes[changes.length - 1]?.[0]).toEqual([1, 2, 3])
@@ -195,6 +199,7 @@ describe('IfsMappingDialog', () => {
 
   it('ignores invalid slot edits', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
       propsData: {
         value: true,
         preview: preview(),

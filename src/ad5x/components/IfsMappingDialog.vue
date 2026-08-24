@@ -6,14 +6,14 @@
   >
     <v-card data-test="ifs-mapping-dialog">
       <v-card-title class="d-flex align-center mapping-title">
-        <span>Назначение материалов IFS</span>
+        <span>{{ $t('app.ad5x.ifs.mapping.title') }}</span>
         <v-spacer />
         <v-chip
           small
           label
           outlined
         >
-          Ручной черновик
+          {{ $t('app.ad5x.ifs.mapping.manualDraft') }}
         </v-chip>
       </v-card-title>
 
@@ -27,7 +27,7 @@
           type="info"
           class="mb-4"
         >
-          Здесь меняется только черновик T→slot. Запуск печати пока не выполняется.
+          {{ $t('app.ad5x.ifs.mapping.draftNotice') }}
         </v-alert>
 
         <div
@@ -36,7 +36,7 @@
         >
           <div>
             <div class="font-weight-medium">
-              Карта стола перед печатью
+              {{ $t('app.ad5x.ifs.mapping.bedMeshBeforePrint') }}
             </div>
             <div class="text-caption text--secondary">
               {{ providerLevelingLabel }}
@@ -53,13 +53,13 @@
               :value="0"
               small
             >
-              Не снимать
+              {{ $t('app.ad5x.ifs.mapping.keepMesh') }}
             </v-btn>
             <v-btn
               :value="1"
               small
             >
-              Снять
+              {{ $t('app.ad5x.ifs.mapping.probeMesh') }}
             </v-btn>
           </v-btn-toggle>
         </div>
@@ -94,10 +94,10 @@
 
           <div class="mapping-requirement">
             <div class="text-caption text--secondary">
-              Требуется
+              {{ $t('app.ad5x.ifs.mapping.required') }}
             </div>
             <div class="font-weight-medium">
-              {{ row.requirement.material || 'Материал не указан' }}
+              {{ row.requirement.material || $t('app.ad5x.ifs.mapping.materialUnspecified') }}
             </div>
             <div
               v-if="row.requirement.color"
@@ -158,10 +158,10 @@
           data-test="mapping-reset-auto"
           @click="resetToAutomatic"
         >
-          Сбросить к авто
+          {{ $t('app.ad5x.ifs.mapping.resetAutomatic') }}
         </v-btn>
         <span class="text-caption text--secondary ml-2">
-          Источник анализа: Z-Mod · применение карты отключено
+          {{ $t('app.ad5x.ifs.mapping.analysisSource') }}
         </span>
         <v-spacer />
         <v-btn
@@ -170,14 +170,14 @@
           data-test="mapping-prepare"
           @click="prepareLaunch"
         >
-          Финальная проверка
+          {{ $t('app.ad5x.ifs.mapping.finalCheck') }}
         </v-btn>
         <v-btn
           text
           :disabled="busy"
           @click="$emit('input', false)"
         >
-          Закрыть
+          {{ $t('app.ad5x.ifs.mapping.close') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -240,9 +240,9 @@ export default class IfsMappingDialog extends Vue {
   leveling: 0 | 1 | null = null
 
   get providerLevelingLabel (): string {
-    if (this.providerLeveling === 1) return 'Z-Mod по умолчанию: снять карту'
-    if (this.providerLeveling === 0) return 'Z-Mod по умолчанию: не снимать карту'
-    return 'Z-Mod не сообщил значение по умолчанию — выберите явно'
+    if (this.providerLeveling === 1) return this.$t('app.ad5x.ifs.mapping.providerLevelingProbe').toString()
+    if (this.providerLeveling === 0) return this.$t('app.ad5x.ifs.mapping.providerLevelingKeep').toString()
+    return this.$t('app.ad5x.ifs.mapping.providerLevelingUnknown').toString()
   }
 
   get dryRunAlertType (): 'info' | 'success' | 'warning' {
@@ -251,23 +251,23 @@ export default class IfsMappingDialog extends Vue {
   }
 
   get dryRunStatusText (): string {
-    if (!this.launchGate) return 'Dry-run ещё не перепроверен backend. Измените назначение или режим карты стола.'
+    if (!this.launchGate) return this.$t('app.ad5x.ifs.mapping.dryRunUnchecked').toString()
     const providerPlan = this.launchGate.provider_launch_plan
     if (this.launchGate.candidate && providerPlan.ready) {
       const acceptance = this.launchGate.hardware_acceptance
       if (acceptance.required && !acceptance.accepted) {
-        if (this.prepared) return 'Финальная проверка пройдена: файл, T→slot и live IFS состояние перепроверены. Реальный запуск всё ещё заблокирован до exact-SHA аппаратной приёмки.'
-        return 'План PRINT_ZCOLOR структурно готов. Реальный запуск заблокирован до exact-SHA аппаратной приёмки.'
+        if (this.prepared) return this.$t('app.ad5x.ifs.mapping.dryRunPreparedHardwareBlocked').toString()
+        return this.$t('app.ad5x.ifs.mapping.dryRunReadyHardwareBlocked').toString()
       }
-      return 'План PRINT_ZCOLOR структурно готов. Реальный запуск остаётся отключён.'
+      return this.$t('app.ad5x.ifs.mapping.dryRunReadyDisabled').toString()
     }
     if (providerPlan.missing_parameters.includes('LEVELING')) {
-      return 'Для полного плана Z-Mod требуется явный выбор режима карты стола.'
+      return this.$t('app.ad5x.ifs.mapping.levelingRequired').toString()
     }
     const blockers = this.launchGate.blockers.filter(code => code !== 'launch_write_not_enabled')
     return blockers.length
-      ? `Backend заблокировал dry-run: ${blockers.join(', ')}`
-      : 'План Z-Mod пока не готов к dry-run.'
+      ? this.$t('app.ad5x.ifs.mapping.dryRunBlocked', { blockers: blockers.join(', ') }).toString()
+      : this.$t('app.ad5x.ifs.mapping.dryRunNotReady').toString()
   }
 
   get canPrepare (): boolean {
@@ -282,9 +282,9 @@ export default class IfsMappingDialog extends Vue {
   get slotItems (): SlotItem[] {
     return [1, 2, 3, 4].map(slotNumber => {
       const slot = this.slots.find(item => item.slot === slotNumber)
-      if (!slot) return { value: slotNumber, text: `${slotNumber} · слот недоступен` }
-      if (!slot.present) return { value: slotNumber, text: `${slotNumber} · пусто` }
-      const label = slot.spool.name || slot.spool.material || slot.material || 'катушка'
+      if (!slot) return { value: slotNumber, text: this.$t('app.ad5x.ifs.mapping.slotUnavailable', { slot: slotNumber }).toString() }
+      if (!slot.present) return { value: slotNumber, text: this.$t('app.ad5x.ifs.mapping.slotEmpty', { slot: slotNumber }).toString() }
+      const label = slot.spool.name || slot.spool.material || slot.material || this.$t('app.ad5x.ifs.mapping.spoolFallback').toString()
       return { value: slotNumber, text: `${slotNumber} · ${label}` }
     })
   }
@@ -352,20 +352,20 @@ export default class IfsMappingDialog extends Vue {
 
   rowStateLabel (state: Ad5xIfsPreprintRowState): string {
     switch (state) {
-      case 'ready': return 'Готов'
-      case 'unassigned': return 'Не назначен'
-      case 'slot_empty': return 'Слот пуст'
-      case 'slot_missing': return 'Нет слота'
+      case 'ready': return this.$t('app.ad5x.ifs.mapping.stateReady').toString()
+      case 'unassigned': return this.$t('app.ad5x.ifs.mapping.stateUnassigned').toString()
+      case 'slot_empty': return this.$t('app.ad5x.ifs.mapping.stateSlotEmpty').toString()
+      case 'slot_missing': return this.$t('app.ad5x.ifs.mapping.stateSlotMissing').toString()
     }
   }
 
   warningLabel (warning: string): string {
     const labels: Readonly<Record<string, string>> = {
-      assigned_slot_empty: 'Один из назначенных физических слотов пуст.',
-      assigned_slot_missing: 'Назначение указывает на отсутствующий физический слот.',
-      unassigned_tool: 'Не всем инструментам назначен физический слот.',
-      manual_duplicate_slot: 'Один слот вручную назначен нескольким инструментам.',
-      duplicate_slot: 'Один физический слот назначен нескольким инструментам.'
+      assigned_slot_empty: this.$t('app.ad5x.ifs.mapping.warningAssignedSlotEmpty').toString(),
+      assigned_slot_missing: this.$t('app.ad5x.ifs.mapping.warningAssignedSlotMissing').toString(),
+      unassigned_tool: this.$t('app.ad5x.ifs.mapping.warningUnassignedTool').toString(),
+      manual_duplicate_slot: this.$t('app.ad5x.ifs.mapping.warningManualDuplicate').toString(),
+      duplicate_slot: this.$t('app.ad5x.ifs.mapping.warningDuplicate').toString()
     }
     return labels[warning] ?? warning
   }

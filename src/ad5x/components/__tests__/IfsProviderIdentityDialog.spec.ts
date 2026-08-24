@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
 import type { Ad5xIfsSlot } from '@/ad5x/api/ifs'
 import IfsProviderIdentityDialog from '../IfsProviderIdentityDialog.vue'
 
@@ -52,8 +53,10 @@ const slot: Ad5xIfsSlot = {
 }
 
 describe('IfsProviderIdentityDialog', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('shows current and desired identities and emits an explicit spool projection apply', () => {
     const wrapper = shallowMount(IfsProviderIdentityDialog, {
+      i18n,
       propsData: { value: true, slotData: slot, materialTypes: ['PLA', 'PETG'], hardwareAccepted: true }
     })
     ;(wrapper.vm as any).reset()
@@ -68,7 +71,7 @@ describe('IfsProviderIdentityDialog', () => {
 
   it('keeps direct IFS identity editing available when only the spool projection is blocked', () => {
     const projectionBlocked: Ad5xIfsSlot = { ...slot, compatibility: { zmod: { ...slot.compatibility!.zmod, desired: { material: '', color: '' }, sync_state: 'unsupported', write_ready: false, write_blockers: ['missing_material'] } } }
-    const wrapper = shallowMount(IfsProviderIdentityDialog, { propsData: { value: true, slotData: projectionBlocked, materialTypes: ['PLA', 'PETG'], hardwareAccepted: true } })
+    const wrapper = shallowMount(IfsProviderIdentityDialog, { i18n, propsData: { value: true, slotData: projectionBlocked, materialTypes: ['PLA', 'PETG'], hardwareAccepted: true } })
     ;(wrapper.vm as any).reset()
     ;(wrapper.vm as any).save()
     expect((wrapper.vm as any).controlsDisabled).toBe(false)
@@ -77,7 +80,7 @@ describe('IfsProviderIdentityDialog', () => {
   })
 
   it('fails closed in the UI when provider material types are unknown', () => {
-    const wrapper = shallowMount(IfsProviderIdentityDialog, { propsData: { value: true, slotData: slot, materialTypes: ['?'], hardwareAccepted: true } })
+    const wrapper = shallowMount(IfsProviderIdentityDialog, { i18n, propsData: { value: true, slotData: slot, materialTypes: ['?'], hardwareAccepted: true } })
     ;(wrapper.vm as any).reset()
     ;(wrapper.vm as any).save()
     expect((wrapper.vm as any).providerTypesKnown).toBe(false)
@@ -87,6 +90,7 @@ describe('IfsProviderIdentityDialog', () => {
 
   it('blocks every provider write until hardware acceptance is true', () => {
     const wrapper = shallowMount(IfsProviderIdentityDialog, {
+      i18n,
       propsData: { value: true, slotData: slot, hardwareAccepted: false }
     })
     ;(wrapper.vm as any).reset()

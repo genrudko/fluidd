@@ -6,7 +6,7 @@
   >
     <v-card>
       <v-card-title class="d-flex align-center">
-        <span>Spoolman<span v-if="slotData"> · Слот {{ slotData.slot }}</span></span>
+        <span>Spoolman<span v-if="slotData"> · {{ $t('app.ad5x.ifs.spoolman.slot', { slot: slotData.slot }) }}</span></span>
         <v-spacer />
         <v-chip
           v-if="slotData && currentSpoolId !== null"
@@ -24,7 +24,7 @@
           text
           type="info"
         >
-          Слот не выбран.
+          {{ $t('app.ad5x.ifs.spoolman.noSlot') }}
         </v-alert>
 
         <template v-else>
@@ -37,7 +37,7 @@
                 {{ currentLabel }}
               </div>
               <div class="text-body-2 text--secondary">
-                Текущая привязка Spoolman #{{ currentSpoolId }}
+                {{ $t('app.ad5x.ifs.spoolman.currentBinding', { id: currentSpoolId }) }}
               </div>
             </div>
             <v-spacer />
@@ -49,7 +49,7 @@
               data-test="spoolman-refresh"
               @click="requestRefresh"
             >
-              Обновить остаток
+              {{ $t('app.ad5x.ifs.spoolman.refreshRemaining') }}
             </v-btn>
             <v-btn
               small
@@ -59,7 +59,7 @@
               data-test="spoolman-unbind"
               @click="requestUnbind"
             >
-              Отвязать
+              {{ $t('app.ad5x.ifs.spoolman.unbind') }}
             </v-btn>
           </div>
 
@@ -69,7 +69,7 @@
             type="warning"
             data-test="spoolman-offline"
           >
-            Spoolman сейчас недоступен. Поиск и новая привязка отключены; существующую локальную привязку можно снять.
+            {{ $t('app.ad5x.ifs.spoolman.offline') }}
           </v-alert>
 
           <v-alert
@@ -88,7 +88,7 @@
               outlined
               hide-details
               clearable
-              label="Найти катушку в Spoolman"
+              :label="$t('app.ad5x.ifs.spoolman.searchLabel').toString()"
               :disabled="!connected || busy || locked"
               :loading="loading"
               data-test="spoolman-query"
@@ -103,7 +103,7 @@
               data-test="spoolman-search"
               @click="requestSearch"
             >
-              Найти
+              {{ $t('app.ad5x.ifs.spoolman.search') }}
             </v-btn>
           </div>
 
@@ -143,7 +143,7 @@
                   data-test="spoolman-bind"
                   @click="requestBind(item)"
                 >
-                  {{ isCurrent(item) ? 'Назначено' : 'Привязать' }}
+                  {{ isCurrent(item) ? $t('app.ad5x.ifs.spoolman.assigned') : $t('app.ad5x.ifs.spoolman.bind') }}
                 </v-btn>
               </v-list-item-action>
             </v-list-item>
@@ -154,7 +154,7 @@
             class="text-body-2 text--secondary py-4 text-center"
             data-test="spoolman-empty-results"
           >
-            Катушки не найдены.
+            {{ $t('app.ad5x.ifs.spoolman.noResults') }}
           </div>
         </template>
       </v-card-text>
@@ -165,7 +165,7 @@
           text
           @click="$emit('input', false)"
         >
-          Закрыть
+          {{ $t('app.ad5x.ifs.spoolman.close') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -214,7 +214,7 @@ export default class IfsSpoolmanDialog extends Vue {
     if (!this.slotData) return ''
     return [this.slotData.spool.brand, this.slotData.spool.name, this.slotData.spool.material]
       .filter(Boolean)
-      .join(' · ') || 'Привязанная катушка'
+      .join(' · ') || this.$t('app.ad5x.ifs.spoolman.boundSpoolFallback').toString()
   }
 
   updateQuery (value: string | null): void {
@@ -244,13 +244,13 @@ export default class IfsSpoolmanDialog extends Vue {
   itemTitle (item: Ad5xSpoolmanLibraryItem): string {
     return [item.spool.brand, item.spool.name]
       .filter(Boolean)
-      .join(' · ') || item.spool.material || 'Катушка Spoolman'
+      .join(' · ') || item.spool.material || this.$t('app.ad5x.ifs.spoolman.spoolFallback').toString()
   }
 
   itemDetails (item: Ad5xSpoolmanLibraryItem): string {
     const details = [item.spool.material]
-    if (item.inventory.remaining_g !== null) details.push(`${Math.round(item.inventory.remaining_g)} г`)
-    else if (item.inventory.remaining_length_mm !== null) details.push(`${Math.round(item.inventory.remaining_length_mm / 1000)} м`)
+    if (item.inventory.remaining_g !== null) details.push(this.$t('app.ad5x.common.grams', { value: Math.round(item.inventory.remaining_g) }).toString())
+    else if (item.inventory.remaining_length_mm !== null) details.push(this.$t('app.ad5x.common.meters', { value: Math.round(item.inventory.remaining_length_mm / 1000) }).toString())
     if (item.inventory.location) details.push(item.inventory.location)
     return details.filter(Boolean).join(' · ')
   }

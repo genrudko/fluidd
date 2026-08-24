@@ -6,7 +6,7 @@
   >
     <v-card>
       <v-card-title>
-        Данные катушки без Spoolman<span v-if="slotData"> · Слот {{ slotData.slot }}</span>
+        {{ $t('app.ad5x.ifs.metadata.title') }}<span v-if="slotData"> · {{ $t('app.ad5x.ifs.metadata.slot', { slot: slotData.slot }) }}</span>
       </v-card-title>
 
       <v-card-text>
@@ -16,7 +16,7 @@
           type="info"
           data-test="metadata-spoolman-owned"
         >
-          Катушка привязана к Spoolman. Основные данные редактируются через Spoolman, чтобы не создавать два источника истины.
+          {{ $t('app.ad5x.ifs.metadata.spoolmanOwned') }}
         </v-alert>
 
         <v-alert
@@ -38,7 +38,7 @@
                 v-model="brand"
                 dense
                 outlined
-                label="Производитель"
+                :label="$t('app.ad5x.ifs.metadata.brand').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -50,7 +50,7 @@
                 v-model="series"
                 dense
                 outlined
-                label="Серия"
+                :label="$t('app.ad5x.ifs.metadata.series').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -62,7 +62,7 @@
                 v-model="name"
                 dense
                 outlined
-                label="Название катушки"
+                :label="$t('app.ad5x.ifs.metadata.name').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -74,7 +74,7 @@
                 v-model="material"
                 dense
                 outlined
-                label="Материал катушки"
+                :label="$t('app.ad5x.ifs.metadata.material').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -86,7 +86,7 @@
                 v-model="variant"
                 dense
                 outlined
-                label="Вариант"
+                :label="$t('app.ad5x.ifs.metadata.variant').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -104,7 +104,7 @@
                 item-value="value"
                 dense
                 outlined
-                label="Тип цвета"
+                :label="$t('app.ad5x.ifs.metadata.colorMode').toString()"
                 :disabled="formLocked"
                 @change="ensureMinimumColors"
               />
@@ -120,14 +120,14 @@
                 item-value="value"
                 dense
                 outlined
-                label="Финиш"
+                :label="$t('app.ad5x.ifs.metadata.finish').toString()"
                 :disabled="formLocked"
               />
             </v-col>
           </v-row>
 
           <div class="text-subtitle-2 mb-2">
-            Цвета
+            {{ $t('app.ad5x.ifs.metadata.colors') }}
           </div>
           <div
             v-for="(color, index) in colors"
@@ -147,7 +147,7 @@
               dense
               outlined
               hide-details
-              :label="`Цвет ${index + 1}`"
+              :label="$t('app.ad5x.ifs.metadata.colorNumber', { index: index + 1 }).toString()"
               :disabled="formLocked"
               :error="!isHexColor(color)"
               :data-test="`metadata-color-${index}`"
@@ -173,7 +173,7 @@
             data-test="metadata-add-color"
             @click="addColor"
           >
-            + цвет
+            {{ $t('app.ad5x.ifs.metadata.addColor') }}
           </v-btn>
 
           <v-row
@@ -190,7 +190,7 @@
                 outlined
                 type="number"
                 min="0"
-                label="Остаток, г"
+                :label="$t('app.ad5x.ifs.metadata.remainingG').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -204,7 +204,7 @@
                 outlined
                 type="number"
                 min="0"
-                label="Сопло, °C"
+                :label="$t('app.ad5x.ifs.metadata.nozzleTemp').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -218,7 +218,7 @@
                 outlined
                 type="number"
                 min="0"
-                label="Стол, °C"
+                :label="$t('app.ad5x.ifs.metadata.bedTemp').toString()"
                 :disabled="formLocked"
               />
             </v-col>
@@ -235,14 +235,14 @@
           data-test="metadata-clear"
           @click="requestClear"
         >
-          Очистить ручные данные
+          {{ $t('app.ad5x.ifs.metadata.clearManual') }}
         </v-btn>
         <v-spacer />
         <v-btn
           text
           @click="$emit('input', false)"
         >
-          Закрыть
+          {{ $t('app.ad5x.ifs.metadata.close') }}
         </v-btn>
         <v-btn
           color="primary"
@@ -251,7 +251,7 @@
           data-test="metadata-save"
           @click="requestSave"
         >
-          Сохранить
+          {{ $t('app.ad5x.ifs.metadata.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -294,21 +294,19 @@ export default class IfsMetadataDialog extends Vue {
   colors: string[] = [DEFAULT_COLOR]
   finish = 'standard'
 
-  readonly colorModes = [
-    { text: 'Один цвет', value: 'solid' },
-    { text: 'Два цвета', value: 'dual' },
-    { text: 'Три цвета', value: 'tricolor' },
-    { text: 'Градиент', value: 'gradient' },
-    { text: 'Радуга', value: 'rainbow' },
-    { text: 'Особый', value: 'special' }
-  ]
+  get colorModes () {
+    return ['solid', 'dual', 'tricolor', 'gradient', 'rainbow', 'special'].map(value => ({
+      value,
+      text: this.$t(`app.ad5x.ifs.metadata.colorModes.${value}`).toString()
+    }))
+  }
 
-  readonly finishes = [
-    ['standard', 'Обычный'], ['matte', 'Матовый'], ['silk', 'Шёлк'], ['satin', 'Сатин'],
-    ['metallic', 'Металлик'], ['transparent', 'Прозрачный'], ['translucent', 'Полупрозрачный'],
-    ['glitter', 'Блёстки'], ['glow', 'Светящийся'], ['wood', 'Дерево'],
-    ['carbon_fiber', 'Углеволокно'], ['other', 'Другой']
-  ].map(([value, text]) => ({ value, text }))
+  get finishes () {
+    return ['standard', 'matte', 'silk', 'satin', 'metallic', 'transparent', 'translucent', 'glitter', 'glow', 'wood', 'carbon_fiber', 'other'].map(value => ({
+      value,
+      text: this.$t(`app.ad5x.ifs.metadata.finishes.${value}`).toString()
+    }))
+  }
 
   get formLocked (): boolean {
     return this.busy || this.locked || this.slotData?.spool.spoolman_spool_id !== null

@@ -4,7 +4,7 @@
     max-width="560"
   >
     <template #title>
-      Тип / цвет IFS<span v-if="slotData"> · Слот {{ slotData.slot }}</span>
+      {{ $t('app.ad5x.ifs.providerIdentity.title') }}<span v-if="slotData"> · {{ $t('app.ad5x.ifs.providerIdentity.slot', { slot: slotData.slot }) }}</span>
     </template>
 
     <template v-if="slotData && slotData.present">
@@ -15,7 +15,7 @@
         type="warning"
         data-test="provider-hardware-gate"
       >
-        Запись отключена: требуется подтверждение совместимости оборудования Z-Mod.
+        {{ $t('app.ad5x.ifs.providerIdentity.hardwareGate') }}
       </v-alert>
       <v-alert
         v-else-if="!providerTypesKnown"
@@ -24,7 +24,7 @@
         type="warning"
         data-test="provider-types-unknown"
       >
-        Список поддерживаемых типов материала Z-Mod недоступен. Запись заблокирована до получения provider-данных.
+        {{ $t('app.ad5x.ifs.providerIdentity.typesUnknown') }}
       </v-alert>
       <v-alert
         v-else-if="desired && !writeReady"
@@ -33,11 +33,11 @@
         type="info"
         data-test="provider-write-blocked"
       >
-        Данные катушки сейчас нельзя применить в IFS<span v-if="blockerLabel">: {{ blockerLabel }}</span>. Ручной тип / цвет IFS остаётся отдельным действием.
+        {{ $t('app.ad5x.ifs.providerIdentity.projectionBlocked') }}<span v-if="blockerLabel">: {{ blockerLabel }}</span>.
       </v-alert>
 
       <div class="text-caption text--secondary">
-        Сейчас в IFS / Z-Mod
+        {{ $t('app.ad5x.ifs.providerIdentity.current') }}
       </div>
       <div
         class="text-body-1 mb-4"
@@ -49,14 +49,14 @@
       <v-select
         v-model="material"
         :items="supportedMaterialTypes"
-        label="Материал IFS"
+        :label="$t('app.ad5x.ifs.providerIdentity.material').toString()"
         :error-messages="materialError ? [materialError] : []"
         :disabled="controlsDisabled"
         data-test="provider-material"
       />
       <v-text-field
         v-model="color"
-        label="Цвет IFS (#RRGGBB)"
+        :label="$t('app.ad5x.ifs.providerIdentity.color').toString()"
         :disabled="controlsDisabled"
         :error-messages="colorError ? [colorError] : []"
         data-test="provider-color"
@@ -70,9 +70,9 @@
         data-test="provider-desired"
       >
         <div class="text-caption text--secondary">
-          Данные rich-катушки / Spoolman
+          {{ $t('app.ad5x.ifs.providerIdentity.richSpool') }}
         </div>
-        <div>{{ desired.material || 'Материал не определён' }} · {{ desired.color || 'Цвет не определён' }}</div>
+        <div>{{ desired.material || $t('app.ad5x.ifs.providerIdentity.materialUnknown') }} · {{ desired.color || $t('app.ad5x.ifs.providerIdentity.colorUnknown') }}</div>
         <div
           v-if="spoolIds"
           class="text-caption text--secondary mt-1"
@@ -86,7 +86,7 @@
           :color="mismatched ? 'warning' : 'success'"
           data-test="provider-sync-state"
         >
-          {{ mismatched ? 'Данные расходятся' : 'Данные совпадают' }}
+          {{ mismatched ? $t('app.ad5x.ifs.providerIdentity.diverged') : $t('app.ad5x.ifs.providerIdentity.inSync') }}
         </v-chip>
       </v-sheet>
 
@@ -106,7 +106,7 @@
         text
         @click="open = false"
       >
-        Закрыть
+        {{ $t('app.ad5x.ifs.providerIdentity.close') }}
       </v-btn>
       <v-spacer />
       <v-btn
@@ -118,7 +118,7 @@
         data-test="provider-apply-spool"
         @click="applySpool"
       >
-        Применить данные катушки в IFS
+        {{ $t('app.ad5x.ifs.providerIdentity.applySpool') }}
       </v-btn>
       <v-btn
         color="primary"
@@ -127,7 +127,7 @@
         data-test="provider-save"
         @click="save"
       >
-        Сохранить в IFS
+        {{ $t('app.ad5x.ifs.providerIdentity.save') }}
       </v-btn>
     </template>
   </app-dialog>
@@ -183,8 +183,8 @@ export default class IfsProviderIdentityDialog extends Vue {
   get blockerLabel (): string { return this.compatibility?.write_blockers.join(' · ') ?? '' }
   get materialError (): string {
     const material = this.material.trim().toUpperCase()
-    if (!material) return 'Выберите материал IFS'
-    if (this.providerTypesKnown && !this.supportedMaterialTypes.includes(material)) return 'Этот тип не поддерживается текущим provider Z-Mod'
+    if (!material) return this.$t('app.ad5x.ifs.providerIdentity.selectMaterial').toString()
+    if (this.providerTypesKnown && !this.supportedMaterialTypes.includes(material)) return this.$t('app.ad5x.ifs.providerIdentity.unsupportedMaterial').toString()
     return ''
   }
 
@@ -193,13 +193,13 @@ export default class IfsProviderIdentityDialog extends Vue {
     return this.supportedMaterialTypes.includes(this.desired.material.trim().toUpperCase()) && /^#[0-9A-F]{6}$/i.test(this.desired.color)
   }
 
-  get currentLabel (): string { return `${this.current.material || 'Материал не определён'} · ${this.current.color || 'Цвет не определён'}` }
-  get colorError (): string { return /^#[0-9A-F]{6}$/i.test(this.color.trim()) ? '' : 'Укажите цвет в формате #RRGGBB' }
+  get currentLabel (): string { return `${this.current.material || this.$t('app.ad5x.ifs.providerIdentity.materialUnknown')} · ${this.current.color || this.$t('app.ad5x.ifs.providerIdentity.colorUnknown')}` }
+  get colorError (): string { return /^#[0-9A-F]{6}$/i.test(this.color.trim()) ? '' : this.$t('app.ad5x.ifs.providerIdentity.invalidColor').toString() }
   get spoolIds (): string {
     if (!this.slotData) return ''
     const ids = []
-    if (this.slotData.spool.spoolman_spool_id !== null) ids.push(`Spoolman spool ID: ${this.slotData.spool.spoolman_spool_id}`)
-    if (this.slotData.spool.spoolman_filament_id !== null) ids.push(`filament ID: ${this.slotData.spool.spoolman_filament_id}`)
+    if (this.slotData.spool.spoolman_spool_id !== null) ids.push(this.$t('app.ad5x.ifs.providerIdentity.spoolmanSpoolId', { id: this.slotData.spool.spoolman_spool_id }).toString())
+    if (this.slotData.spool.spoolman_filament_id !== null) ids.push(this.$t('app.ad5x.ifs.providerIdentity.filamentId', { id: this.slotData.spool.spoolman_filament_id }).toString())
     return ids.join(' · ')
   }
 

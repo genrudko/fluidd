@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
 import IfsPreprintPlan from '../IfsPreprintPlan.vue'
 import type { Ad5xIfsPreprintPlan as Plan, Ad5xIfsSlot } from '@/ad5x/api/ifs'
 
@@ -63,8 +64,9 @@ function plan (overrides: Partial<Plan> = {}): Plan {
 }
 
 describe('IfsPreprintPlan', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('uses the normalized physical slot as the visual source for an assigned tool', () => {
-    const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: plan(), slots: [slot(3)] } })
+    const wrapper = shallowMount(IfsPreprintPlan, { i18n, propsData: { plan: plan(), slots: [slot(3)] } })
     const vm = wrapper.vm as any
 
     expect(vm.assignedLabel(plan().rows[0])).toBe('PLA Magenta')
@@ -82,15 +84,16 @@ describe('IfsPreprintPlan', () => {
         state: 'slot_missing'
       }]
     })
-    const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: missing, slots: [slot(1)] } })
+    const wrapper = shallowMount(IfsPreprintPlan, { i18n, propsData: { plan: missing, slots: [slot(1)] } })
     const vm = wrapper.vm as any
 
-    expect(vm.assignedLabel(missing.rows[0])).toBe('Слот отсутствует')
+    expect(vm.assignedLabel(missing.rows[0])).toBe('Slot is missing')
     expect(vm.assignedColor(missing.rows[0])).toBe('')
   })
 
   it('offers the edit action only when mapping is editable', async () => {
     const editable = shallowMount(IfsPreprintPlan, {
+      i18n,
       propsData: { plan: plan(), slots: [slot(3)], editable: true, editing: false }
     })
     const button = editable.find('[data-test="preprint-edit"]')
@@ -100,24 +103,25 @@ describe('IfsPreprintPlan', () => {
     expect(editable.emitted('edit')).toHaveLength(1)
 
     const readonly = shallowMount(IfsPreprintPlan, {
+      i18n,
       propsData: { plan: plan(), slots: [slot(3)], editable: false, editing: false }
     })
     expect(readonly.find('[data-test="preprint-edit"]').exists()).toBe(false)
   })
 
   it('keeps summary visible but collapses tool rows in compact mode', () => {
-    const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: plan(), slots: [slot(3)], compact: true } })
+    const wrapper = shallowMount(IfsPreprintPlan, { i18n, propsData: { plan: plan(), slots: [slot(3)], compact: true } })
     expect(wrapper.find('[data-test="preprint-status"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="preprint-row-0"]').classes()).toContain('d-none')
   })
 
   it('keeps aggregate Z-Mod quality warnings global instead of assigning them to a tool', () => {
     const warningPlan = plan({ status: 'warning', warnings: ['weak_color', 'duplicate_slot'] })
-    const wrapper = shallowMount(IfsPreprintPlan, { propsData: { plan: warningPlan, slots: [slot(3)] } })
+    const wrapper = shallowMount(IfsPreprintPlan, { i18n, propsData: { plan: warningPlan, slots: [slot(3)] } })
     const vm = wrapper.vm as any
 
-    expect(vm.warningLabel('weak_color')).toContain('неоднозначное')
-    expect(vm.warningLabel('duplicate_slot')).toContain('нескольким инструментам')
+    expect(vm.warningLabel('weak_color')).toContain('ambiguous')
+    expect(vm.warningLabel('duplicate_slot')).toContain('multiple tools')
     expect(warningPlan.rows[0]).not.toHaveProperty('weak_color')
   })
 })

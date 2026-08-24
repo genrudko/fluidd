@@ -5,7 +5,7 @@
     data-test="ifs-preprint-plan"
   >
     <v-card-title class="d-flex flex-wrap align-center py-3 preprint-title">
-      <span>План печати</span>
+      <span>{{ $t('app.ad5x.ifs.preprint.title') }}</span>
       <v-spacer />
       <v-btn
         v-if="editable && plan.available && plan.filename"
@@ -16,7 +16,7 @@
         data-test="preprint-edit"
         @click="$emit('edit')"
       >
-        Изменить
+        {{ $t('app.ad5x.ifs.preprint.edit') }}
       </v-btn>
       <v-chip
         small
@@ -43,7 +43,7 @@
         class="mb-0"
         data-test="preprint-unavailable"
       >
-        Для текущего файла ещё нет данных о материалах и назначениях IFS.
+        {{ $t('app.ad5x.ifs.preprint.unavailable') }}
         <span v-if="plan.error"> · {{ plan.error }}</span>
       </v-alert>
 
@@ -53,20 +53,20 @@
             small
             outlined
           >
-            Нужно: {{ plan.summary.required_tools }}
+            {{ $t('app.ad5x.ifs.preprint.requiredCount', { count: plan.summary.required_tools }) }}
           </v-chip>
           <v-chip
             small
             outlined
           >
-            Назначено: {{ plan.summary.assigned_tools }}
+            {{ $t('app.ad5x.ifs.preprint.assignedCount', { count: plan.summary.assigned_tools }) }}
           </v-chip>
           <v-chip
             small
             outlined
             :color="plan.summary.ready_tools === plan.summary.required_tools ? 'success' : undefined"
           >
-            Готово: {{ plan.summary.ready_tools }}
+            {{ $t('app.ad5x.ifs.preprint.readyCount', { count: plan.summary.ready_tools }) }}
           </v-chip>
         </div>
 
@@ -97,7 +97,7 @@
 
           <div class="preprint-cell">
             <div class="text-caption text--secondary">
-              Требуется
+              {{ $t('app.ad5x.ifs.preprint.required') }}
             </div>
             <div class="d-flex align-center preprint-material">
               <span
@@ -106,7 +106,7 @@
                 :style="{ backgroundColor: requirementColor(row) }"
               />
               <span class="font-weight-medium">
-                {{ row.requirement.material || 'Материал не указан' }}
+                {{ row.requirement.material || $t('app.ad5x.ifs.preprint.materialUnspecified') }}
               </span>
             </div>
             <div
@@ -140,7 +140,7 @@
                   label
                   outlined
                 >
-                  Slot {{ row.assignment.slot }}
+                  {{ $t('app.ad5x.ifs.preprint.slot', { slot: row.assignment.slot }) }}
                 </v-chip>
                 <span class="font-weight-medium">
                   {{ assignedLabel(row) }}
@@ -151,7 +151,7 @@
               v-else
               class="font-weight-medium text--secondary"
             >
-              Не назначен
+              {{ $t('app.ad5x.ifs.preprint.unassigned') }}
             </span>
           </div>
 
@@ -169,7 +169,7 @@
           v-if="!compact"
           class="text-caption text--secondary mt-3"
         >
-          Назначения получены из Plugins AD5X / Z-Mod. Изменение карты и запуск печати на этом экране пока отключены.
+          {{ $t('app.ad5x.ifs.preprint.readOnlyNotice') }}
         </div>
       </template>
     </v-card-text>
@@ -206,10 +206,10 @@ export default class IfsPreprintPlan extends Vue {
 
   get statusLabel (): string {
     switch (this.plan.status) {
-      case 'ready': return 'Готов'
-      case 'warning': return 'Проверьте'
-      case 'blocked': return 'Заблокирован'
-      default: return 'Нет данных'
+      case 'ready': return this.$t('app.ad5x.ifs.preprint.statusReady').toString()
+      case 'warning': return this.$t('app.ad5x.ifs.preprint.statusWarning').toString()
+      case 'blocked': return this.$t('app.ad5x.ifs.preprint.statusBlocked').toString()
+      default: return this.$t('app.ad5x.ifs.preprint.statusUnavailable').toString()
     }
   }
 
@@ -239,17 +239,17 @@ export default class IfsPreprintPlan extends Vue {
 
   assignedLabel (row: Ad5xIfsPreprintRow): string {
     const slot = this.physicalSlot(row)
-    if (!slot) return 'Слот отсутствует'
-    if (!slot.present) return 'Пусто'
-    return slot.spool.name || slot.spool.material || slot.material || 'Катушка без имени'
+    if (!slot) return this.$t('app.ad5x.ifs.preprint.slotMissing').toString()
+    if (!slot.present) return this.$t('app.ad5x.ifs.preprint.slotEmpty').toString()
+    return slot.spool.name || slot.spool.material || slot.material || this.$t('app.ad5x.ifs.preprint.spoolUnnamed').toString()
   }
 
   rowStateLabel (state: Ad5xIfsPreprintRowState): string {
     switch (state) {
-      case 'ready': return 'Готов'
-      case 'unassigned': return 'Не назначен'
-      case 'slot_empty': return 'Слот пуст'
-      case 'slot_missing': return 'Нет слота'
+      case 'ready': return this.$t('app.ad5x.ifs.preprint.statusReady').toString()
+      case 'unassigned': return this.$t('app.ad5x.ifs.preprint.rowUnassigned').toString()
+      case 'slot_empty': return this.$t('app.ad5x.ifs.preprint.rowSlotEmpty').toString()
+      case 'slot_missing': return this.$t('app.ad5x.ifs.preprint.rowSlotMissing').toString()
     }
   }
 
@@ -261,14 +261,14 @@ export default class IfsPreprintPlan extends Vue {
 
   warningLabel (warning: string): string {
     const labels: Readonly<Record<string, string>> = {
-      material_failure: 'Z-Mod не смог надёжно сопоставить материал.',
-      color_failure: 'Z-Mod не смог надёжно сопоставить цвет.',
-      weak_color: 'Сопоставление цвета неоднозначное — проверьте назначения.',
-      duplicate_slot: 'Один физический слот назначен нескольким инструментам.',
-      unassigned_tool: 'Не всем инструментам назначен физический слот.',
-      assigned_slot_missing: 'Назначение указывает на отсутствующий физический слот.',
-      assigned_slot_empty: 'Один из назначенных физических слотов пуст.',
-      no_requirements: 'В файле не обнаружены требования к материалам.'
+      material_failure: this.$t('app.ad5x.ifs.preprint.warningMaterialFailure').toString(),
+      color_failure: this.$t('app.ad5x.ifs.preprint.warningColorFailure').toString(),
+      weak_color: this.$t('app.ad5x.ifs.preprint.warningWeakColor').toString(),
+      duplicate_slot: this.$t('app.ad5x.ifs.preprint.warningDuplicateSlot').toString(),
+      unassigned_tool: this.$t('app.ad5x.ifs.preprint.warningUnassignedTool').toString(),
+      assigned_slot_missing: this.$t('app.ad5x.ifs.preprint.warningAssignedSlotMissing').toString(),
+      assigned_slot_empty: this.$t('app.ad5x.ifs.preprint.warningAssignedSlotEmpty').toString(),
+      no_requirements: this.$t('app.ad5x.ifs.preprint.warningNoRequirements').toString()
     }
     return labels[warning] ?? warning
   }

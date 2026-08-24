@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
 import IfsMetadataDialog from '../IfsMetadataDialog.vue'
 import type { Ad5xIfsSlot } from '@/ad5x/api/ifs'
 
@@ -42,8 +43,9 @@ function slot (source = 'flashforge', spoolmanId: number | null = null): Ad5xIfs
 }
 
 describe('IfsMetadataDialog', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('emits normalized manual metadata while preserving hidden identity fields', async () => {
-    const wrapper = shallowMount(IfsMetadataDialog, { propsData: { value: true, slotData: slot() } })
+    const wrapper = shallowMount(IfsMetadataDialog, { i18n, propsData: { value: true, slotData: slot() } })
     ;(wrapper.vm as any).resetFromSlot()
     ;(wrapper.vm as any).material = 'ASA'
     ;(wrapper.vm as any).colors = ['#AABBCC']
@@ -58,13 +60,13 @@ describe('IfsMetadataDialog', () => {
   })
 
   it('allows clear only for current manual metadata', () => {
-    const wrapper = shallowMount(IfsMetadataDialog, { propsData: { value: true, slotData: slot('manual') } })
+    const wrapper = shallowMount(IfsMetadataDialog, { i18n, propsData: { value: true, slotData: slot('manual') } })
     ;(wrapper.vm as any).requestClear()
     expect(wrapper.emitted('clear')).toHaveLength(1)
   })
 
   it('refuses manual writes for a Spoolman-bound slot', () => {
-    const wrapper = shallowMount(IfsMetadataDialog, { propsData: { value: true, slotData: slot('spoolman', 42) } })
+    const wrapper = shallowMount(IfsMetadataDialog, { i18n, propsData: { value: true, slotData: slot('spoolman', 42) } })
     ;(wrapper.vm as any).resetFromSlot()
     ;(wrapper.vm as any).requestSave()
     ;(wrapper.vm as any).requestClear()
