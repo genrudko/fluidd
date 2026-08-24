@@ -115,6 +115,13 @@ export interface Ad5xIfsProviderLaunchPlan {
   execution_enabled: boolean
 }
 
+export interface Ad5xIfsHardwareAcceptance {
+  required: boolean
+  accepted: boolean
+  reason: string
+  exact_sha_required: boolean
+}
+
 export interface Ad5xIfsLaunchGate {
   candidate: boolean
   write_enabled: boolean
@@ -123,6 +130,7 @@ export interface Ad5xIfsLaunchGate {
   plan_status: string
   blockers: readonly string[]
   warnings: readonly string[]
+  hardware_acceptance: Ad5xIfsHardwareAcceptance
   provider_launch_plan: Ad5xIfsProviderLaunchPlan
   mapping_source?: string
   provider_preview_token?: string
@@ -516,6 +524,14 @@ function isProviderLaunchPlan (value: unknown): value is Ad5xIfsProviderLaunchPl
     typeof value.execution_enabled === 'boolean'
 }
 
+function isHardwareAcceptance (value: unknown): value is Ad5xIfsHardwareAcceptance {
+  return isRecord(value) &&
+    typeof value.required === 'boolean' &&
+    typeof value.accepted === 'boolean' &&
+    typeof value.reason === 'string' &&
+    typeof value.exact_sha_required === 'boolean'
+}
+
 function isLaunchGate (value: unknown): value is Ad5xIfsLaunchGate {
   if (!isRecord(value)) return false
   return typeof value.candidate === 'boolean' &&
@@ -525,6 +541,7 @@ function isLaunchGate (value: unknown): value is Ad5xIfsLaunchGate {
     typeof value.plan_status === 'string' &&
     isStringArray(value.blockers) &&
     isStringArray(value.warnings) &&
+    isHardwareAcceptance(value.hardware_acceptance) &&
     isProviderLaunchPlan(value.provider_launch_plan) &&
     (value.mapping_source === undefined || typeof value.mapping_source === 'string') &&
     (value.provider_preview_token === undefined || typeof value.provider_preview_token === 'string') &&

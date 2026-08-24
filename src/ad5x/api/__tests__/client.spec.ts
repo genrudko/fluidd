@@ -225,6 +225,7 @@ describe('Ad5xApiClient', () => {
         plan_status: 'ready',
         blockers: ['launch_write_not_enabled'],
         warnings: [],
+        hardware_acceptance: { required: true, accepted: false, reason: 'hardware_acceptance_required', exact_sha_required: true },
         provider_launch_plan: {
           provider: 'zmod',
           command: 'PRINT_ZCOLOR',

@@ -83,6 +83,7 @@ function launchGate (ready = true): Ad5xIfsLaunchGate {
     plan_status: ready ? 'ready' : 'blocked',
     blockers: ready ? ['launch_write_not_enabled'] : ['assigned_slot_empty', 'launch_write_not_enabled'],
     warnings: [],
+    hardware_acceptance: { required: true, accepted: false, reason: 'hardware_acceptance_required', exact_sha_required: true },
     provider_launch_plan: {
       provider: 'zmod',
       command: 'PRINT_ZCOLOR',
@@ -111,7 +112,7 @@ describe('IfsMappingDialog', () => {
     const vm = wrapper.vm as any
     expect(vm.dryRunAlertType).toBe('success')
     expect(vm.dryRunStatusText).toContain('структурно готов')
-    expect(vm.dryRunStatusText).toContain('запуск остаётся отключён')
+    expect(vm.dryRunStatusText).toContain('аппаратной приёмки')
 
     await wrapper.setProps({ launchGate: launchGate(false) })
     expect(vm.dryRunAlertType).toBe('warning')

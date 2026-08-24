@@ -240,7 +240,11 @@ export default class IfsMappingDialog extends Vue {
     if (!this.launchGate) return 'Dry-run ещё не перепроверен backend. Измените назначение или режим карты стола.'
     const providerPlan = this.launchGate.provider_launch_plan
     if (this.launchGate.candidate && providerPlan.ready) {
-      return 'План PRINT_ZCOLOR структурно готов. Реальный запуск остаётся отключён до аппаратной приёмки.'
+      const acceptance = this.launchGate.hardware_acceptance
+      if (acceptance.required && !acceptance.accepted) {
+        return 'План PRINT_ZCOLOR структурно готов. Реальный запуск заблокирован до exact-SHA аппаратной приёмки.'
+      }
+      return 'План PRINT_ZCOLOR структурно готов. Реальный запуск остаётся отключён.'
     }
     if (providerPlan.missing_parameters.includes('LEVELING')) {
       return 'Для полного плана Z-Mod требуется явный выбор режима карты стола.'
