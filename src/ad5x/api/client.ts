@@ -109,15 +109,17 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
 
   async draftIfsJobMapping (
     previewToken: string,
-    resolvedToolMap: readonly number[]
+    resolvedToolMap: readonly number[],
+    leveling?: 0 | 1
   ): Promise<Ad5xIfsMappingDraftResult> {
     const token = previewToken.trim()
     if (!/^[0-9a-f]{64}$/i.test(token)) throw new Error('Invalid IFS preview token')
     if (!resolvedToolMap.length || !resolvedToolMap.every(slot => Number.isInteger(slot) && slot >= 1 && slot <= 4)) {
       throw new Error('Invalid IFS resolved tool map')
     }
+    if (leveling !== undefined && leveling !== 0 && leveling !== 1) throw new Error('Invalid IFS leveling mode')
     const response = await this.socket.emit(IFS_MAPPING_DRAFT_METHOD, {
-      params: { preview_token: token, resolved_tool_map: [...resolvedToolMap] }
+      params: { preview_token: token, resolved_tool_map: [...resolvedToolMap], ...(leveling === undefined ? {} : { leveling }) }
     })
     if (!isAd5xIfsMappingDraftResult(response)) {
       throw new Error('IFS mapping draft response is incompatible with API 1.0')

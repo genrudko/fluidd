@@ -195,6 +195,7 @@
           :slots="slots"
           :busy="mappingBusy"
           :error="mappingError"
+          :provider-leveling="providerPrintLeveling"
           @change="validateMappingDraft"
         />
 
@@ -319,6 +320,11 @@ export default class Ad5xMaterials extends Vue {
 
   get ifsSuspended (): boolean {
     return Boolean(this.ifsModule?.maintenance_suspended || this.ifsModule?.provider_mode === 'native_display')
+  }
+
+  get providerPrintLeveling (): 0 | 1 | null {
+    const value = this.ifsModule?.provider?.settings?.print_leveling
+    return value === 0 || value === 1 ? value : null
   }
 
   get canEditPreprint (): boolean {
@@ -508,7 +514,7 @@ export default class Ad5xMaterials extends Vue {
     }
   }
 
-  async validateMappingDraft (resolvedToolMap: readonly number[]): Promise<void> {
+  async validateMappingDraft (resolvedToolMap: readonly number[], leveling: 0 | 1 | null = null): Promise<void> {
     if (!this.mappingPreview || !this.mappingPreviewToken || this.mappingBusy) return
 
     this.mappingBusy = true
@@ -516,7 +522,8 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().draftIfsJobMapping(
         this.mappingPreviewToken,
-        resolvedToolMap
+        resolvedToolMap,
+        leveling === 0 || leveling === 1 ? leveling : undefined
       )
       if (!result.ok || !result.mapping_draft || !result.preprint_plan) {
         const stale = result.mapping_draft?.blockers.includes('stale_preview') ?? false

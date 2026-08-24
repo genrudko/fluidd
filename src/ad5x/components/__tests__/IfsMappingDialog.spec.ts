@@ -125,6 +125,18 @@ describe('IfsMappingDialog', () => {
     expect(vm.canResetAutomatic).toBe(false)
   })
 
+  it('starts from the provider leveling default and emits an explicit dry-run choice', () => {
+    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    expect(vm.leveling).toBe(1)
+    expect(vm.providerLevelingLabel).toContain('снять карту')
+    vm.updateLeveling(0)
+    const changes = wrapper.emitted('change') || []
+    expect(changes[changes.length - 1]?.[0]).toEqual([1, 2, 3])
+    expect(changes[changes.length - 1]?.[1]).toBe(0)
+  })
+
   it('ignores invalid slot edits', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
       propsData: {

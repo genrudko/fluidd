@@ -115,12 +115,20 @@ export interface Ad5xIfsMappingDraftResult {
   snapshot: Ad5xSnapshot
 }
 
+export interface Ad5xIfsProviderSettings {
+  print_leveling: 0 | 1 | null
+  print_leveling_known: boolean
+  source: string
+  read_only: boolean
+}
+
 export interface Ad5xIfsProviderState {
   name: string
   mode: string
   supported_modes: readonly string[]
   ifs_manager_supported: boolean
   maintenance_suspended: boolean
+  settings?: Ad5xIfsProviderSettings
 }
 
 export interface Ad5xIfsOperations {
@@ -518,13 +526,22 @@ function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {
     typeof value.error === 'string'
 }
 
+function isProviderSettings (value: unknown): value is Ad5xIfsProviderSettings {
+  return isRecord(value) &&
+    (value.print_leveling === null || value.print_leveling === 0 || value.print_leveling === 1) &&
+    typeof value.print_leveling_known === 'boolean' &&
+    typeof value.source === 'string' &&
+    typeof value.read_only === 'boolean'
+}
+
 function isProviderState (value: unknown): value is Ad5xIfsProviderState {
   return isRecord(value) &&
     typeof value.name === 'string' &&
     typeof value.mode === 'string' &&
     isStringArray(value.supported_modes) &&
     typeof value.ifs_manager_supported === 'boolean' &&
-    typeof value.maintenance_suspended === 'boolean'
+    typeof value.maintenance_suspended === 'boolean' &&
+    (value.settings === undefined || isProviderSettings(value.settings))
 }
 
 function isIfsOperations (value: unknown): value is Ad5xIfsOperations {

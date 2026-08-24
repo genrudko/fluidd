@@ -30,6 +30,40 @@
           Здесь меняется только черновик T→slot. Запуск печати пока не выполняется.
         </v-alert>
 
+        <div
+          class="mapping-leveling mb-4"
+          data-test="mapping-leveling"
+        >
+          <div>
+            <div class="font-weight-medium">
+              Карта стола перед печатью
+            </div>
+            <div class="text-caption text--secondary">
+              {{ providerLevelingLabel }}
+            </div>
+          </div>
+          <v-btn-toggle
+            :value="leveling"
+            dense
+            :disabled="busy || !previewToken"
+            data-test="mapping-leveling-toggle"
+            @change="updateLeveling"
+          >
+            <v-btn
+              :value="0"
+              small
+            >
+              Не снимать
+            </v-btn>
+            <v-btn
+              :value="1"
+              small
+            >
+              Снять
+            </v-btn>
+          </v-btn-toggle>
+        </div>
+
         <v-alert
           v-if="error"
           text
@@ -171,8 +205,18 @@ export default class IfsMappingDialog extends Vue {
   @Prop({ type: String, default: '' })
   readonly error!: string
 
+  @Prop({ type: Number, default: null })
+  readonly providerLeveling!: 0 | 1 | null
+
   mapping: number[] = []
   automaticMapping: number[] = []
+  leveling: 0 | 1 | null = null
+
+  get providerLevelingLabel (): string {
+    if (this.providerLeveling === 1) return 'Z-Mod по умолчанию: снять карту'
+    if (this.providerLeveling === 0) return 'Z-Mod по умолчанию: не снимать карту'
+    return 'Z-Mod не сообщил значение по умолчанию — выберите явно'
+  }
 
   get canResetAutomatic (): boolean {
     return this.mapping.length === this.automaticMapping.length &&
@@ -203,12 +247,17 @@ export default class IfsMappingDialog extends Vue {
     const mapping = this.preview ? [...this.preview.resolved_tool_map] : []
     this.automaticMapping = [...mapping]
     this.mapping = mapping
+    this.leveling = this.providerLeveling === 0 || this.providerLeveling === 1 ? this.providerLeveling : null
+  }
+
+  emitChange (): void {
+    this.$emit('change', [...this.mapping], this.leveling)
   }
 
   resetToAutomatic (): void {
     if (!this.canResetAutomatic) return
     this.mapping = [...this.automaticMapping]
-    this.$emit('change', [...this.mapping])
+    this.emitChange()
   }
 
   selectedSlot (tool: number): number | null {
@@ -224,7 +273,15 @@ export default class IfsMappingDialog extends Vue {
     if (next.length !== this.preview.allowed_tool_count) next.splice(0, next.length, ...this.preview.resolved_tool_map)
     next[tool] = slot
     this.mapping = next
-    this.$emit('change', [...next])
+    this.emitChange()
+  }
+
+  updateLeveling (value: unknown): void {
+    const leveling = Number(value)
+    if (leveling !== 0 && leveling !== 1) return
+    if (!this.mapping.length && this.preview) this.mapping = [...this.preview.resolved_tool_map]
+    this.leveling = leveling
+    this.emitChange()
   }
 
   rowStateLabel (state: Ad5xIfsPreprintRowState): string {
@@ -254,6 +311,13 @@ export default class IfsMappingDialog extends Vue {
   gap: 8px;
 }
 
+.mapping-leveling {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .mapping-row {
   display: grid;
   grid-template-columns: 54px minmax(150px, 1fr) minmax(210px, 1.3fr) auto;
@@ -273,6 +337,11 @@ export default class IfsMappingDialog extends Vue {
 }
 
 @media (max-width: 700px) {
+  .mapping-leveling {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .mapping-row {
     grid-template-columns: 44px minmax(0, 1fr) auto;
   }

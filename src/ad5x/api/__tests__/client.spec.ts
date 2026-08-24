@@ -227,6 +227,12 @@ describe('Ad5xApiClient', () => {
     expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.mapping.draft', {
       params: { preview_token: 'a'.repeat(64), resolved_tool_map: [2] }
     })
+
+    emit.mockClear()
+    await expect(client.draftIfsJobMapping('a'.repeat(64), [2], 1)).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.mapping.draft', {
+      params: { preview_token: 'a'.repeat(64), resolved_tool_map: [2], leveling: 1 }
+    })
   })
 
   it('rejects invalid IFS preview tokens and mappings before touching the socket', async () => {
@@ -236,6 +242,7 @@ describe('Ad5xApiClient', () => {
     await expect(client.previewIfsJob('   ')).rejects.toThrow('IFS preview filename is required')
     await expect(client.draftIfsJobMapping('bad-token', [1])).rejects.toThrow('Invalid IFS preview token')
     await expect(client.draftIfsJobMapping('a'.repeat(64), [0])).rejects.toThrow('Invalid IFS resolved tool map')
+    await expect(client.draftIfsJobMapping('a'.repeat(64), [1], 2 as any)).rejects.toThrow('Invalid IFS leveling mode')
     expect(emit).not.toHaveBeenCalled()
   })
 
