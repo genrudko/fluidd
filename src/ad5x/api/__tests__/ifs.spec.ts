@@ -97,6 +97,14 @@ describe('AD5X IFS frontend contract', () => {
             status: 'available',
             reason: ''
           },
+          topology: {
+            kind: 'selector_single_extruder',
+            ifs_slot_count: 4,
+            external_source: { id: 'external:bypass', kind: 'manual_bypass', modeled: true, runtime_supported: false, control_supported: false }
+          },
+          interoperability: {
+            orca_lane_data: { namespace: 'lane_data', enabled: true, direction: 'printer_to_orca', publishable: true, record_count: 4, conflicts: [], fingerprint: 'abc', requires_moonraker_agent: true, target_version: '2.4.2', state: 'in_sync', error: '' }
+          },
           spoolman: {
             configured: true,
             connected: true,
@@ -118,6 +126,8 @@ describe('AD5X IFS frontend contract', () => {
     expect(getIfsModule(snapshot)?.active_slot).toBe(1)
     expect(getIfsModule(snapshot)?.slots[0].spool.spoolman_spool_id).toBe(42)
     expect(getIfsModule(snapshot)?.preprint_plan.rows[0].assignment?.slot).toBe(1)
+    expect(getIfsModule(snapshot)?.topology?.external_source.id).toBe('external:bypass')
+    expect(getIfsModule(snapshot)?.interoperability?.orca_lane_data.state).toBe('in_sync')
     expect(getIfsModule(snapshot)?.equivalent_spool?.next_slot).toBe(2)
     expect(getIfsModule(snapshot)?.diagnostics?.stall_mask).toBe(10)
   })

@@ -326,6 +326,38 @@ export interface Ad5xIfsDiagnostics {
   runtime_active_slot: number
 }
 
+export interface Ad5xIfsExternalSource {
+  id: string
+  kind: string
+  modeled: boolean
+  runtime_supported: boolean
+  control_supported: boolean
+}
+
+export interface Ad5xIfsTopology {
+  kind: string
+  ifs_slot_count: number
+  external_source: Ad5xIfsExternalSource
+}
+
+export interface Ad5xIfsOrcaLaneDataStatus {
+  namespace: string
+  enabled: boolean
+  direction: string
+  publishable: boolean
+  record_count: number
+  conflicts: readonly Readonly<Record<string, unknown>>[]
+  fingerprint: string
+  requires_moonraker_agent: boolean
+  target_version: string
+  state?: string
+  error?: string
+}
+
+export interface Ad5xIfsInteroperability {
+  orca_lane_data: Ad5xIfsOrcaLaneDataStatus
+}
+
 export interface Ad5xIfsModule {
   available?: boolean
   state: string
@@ -341,6 +373,8 @@ export interface Ad5xIfsModule {
   job_preview?: Ad5xIfsJobPreview
   provider_mode?: string
   maintenance_suspended?: boolean
+  topology?: Ad5xIfsTopology
+  interoperability?: Ad5xIfsInteroperability
   diagnostics?: Ad5xIfsDiagnostics
   equivalent_spool?: Ad5xIfsEquivalentSpoolPreview
   provider?: Ad5xIfsProviderState
@@ -675,6 +709,18 @@ function isIfsOperations (value: unknown): value is Ad5xIfsOperations {
     (value.prepare_job_launch === undefined || typeof value.prepare_job_launch === 'boolean')
 }
 
+function isIfsTopology (value: unknown): value is Ad5xIfsTopology {
+  if (!isRecord(value) || typeof value.kind !== 'string' || !isInteger(value.ifs_slot_count)) return false
+  const external = value.external_source
+  return isRecord(external) && typeof external.id === 'string' && typeof external.kind === 'string' && typeof external.modeled === 'boolean' && typeof external.runtime_supported === 'boolean' && typeof external.control_supported === 'boolean'
+}
+
+function isIfsInteroperability (value: unknown): value is Ad5xIfsInteroperability {
+  if (!isRecord(value) || !isRecord(value.orca_lane_data)) return false
+  const orca = value.orca_lane_data
+  return typeof orca.namespace === 'string' && typeof orca.enabled === 'boolean' && typeof orca.direction === 'string' && typeof orca.publishable === 'boolean' && isInteger(orca.record_count) && Array.isArray(orca.conflicts) && orca.conflicts.every(isRecord) && typeof orca.fingerprint === 'string' && typeof orca.requires_moonraker_agent === 'boolean' && typeof orca.target_version === 'string' && (orca.state === undefined || typeof orca.state === 'string') && (orca.error === undefined || typeof orca.error === 'string')
+}
+
 function isEquivalentSpoolPreview (value: unknown): value is Ad5xIfsEquivalentSpoolPreview {
   if (!isRecord(value) || typeof value.provider !== 'string' || typeof value.provider_command !== 'string') return false
   if (typeof value.automatic_transition_enabled !== 'boolean' || typeof value.transition_hardware_accepted !== 'boolean') return false
@@ -703,6 +749,8 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (value.job_preview !== undefined && !isJobPreview(value.job_preview)) return false
   if (value.provider_mode !== undefined && typeof value.provider_mode !== 'string') return false
   if (value.maintenance_suspended !== undefined && typeof value.maintenance_suspended !== 'boolean') return false
+  if (value.topology !== undefined && !isIfsTopology(value.topology)) return false
+  if (value.interoperability !== undefined && !isIfsInteroperability(value.interoperability)) return false
   if (value.equivalent_spool !== undefined && !isEquivalentSpoolPreview(value.equivalent_spool)) return false
   if (value.provider !== undefined && !isProviderState(value.provider)) return false
   if (value.operations !== undefined && !isIfsOperations(value.operations)) return false
