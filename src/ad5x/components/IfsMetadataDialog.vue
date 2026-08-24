@@ -6,7 +6,7 @@
   >
     <v-card>
       <v-card-title>
-        Материал<span v-if="slotData"> · Слот {{ slotData.slot }}</span>
+        Данные катушки без Spoolman<span v-if="slotData"> · Слот {{ slotData.slot }}</span>
       </v-card-title>
 
       <v-card-text>
@@ -74,7 +74,7 @@
                 v-model="material"
                 dense
                 outlined
-                label="Материал"
+                label="Материал катушки"
                 :disabled="formLocked"
               />
             </v-col>

@@ -21,6 +21,14 @@ export interface Ad5xIfsMetadataResult {
   snapshot: Ad5xSnapshot
 }
 
+export interface Ad5xIfsProviderIdentityResult {
+  ok: boolean
+  slot: number
+  result?: string
+  error?: string
+  snapshot: Ad5xSnapshot
+}
+
 export interface Ad5xIfsMetadataDraft {
   spool: Ad5xIfsSpool
   appearance: Ad5xIfsAppearance
@@ -257,6 +265,26 @@ export interface Ad5xIfsSlotPermissions {
   blocked_reason: string
 }
 
+export interface Ad5xIfsZmodIdentity {
+  material: string
+  color: string
+}
+
+export interface Ad5xIfsZmodCompatibility {
+  slot: number
+  current: Ad5xIfsZmodIdentity
+  desired: Ad5xIfsZmodIdentity
+  sync_state: string
+  write_ready: boolean
+  lossy: boolean
+  omitted_fields: readonly string[]
+  write_blockers: readonly string[]
+}
+
+export interface Ad5xIfsSlotCompatibility {
+  zmod: Ad5xIfsZmodCompatibility
+}
+
 export interface Ad5xIfsSlot {
   slot: number
   present: boolean
@@ -270,6 +298,7 @@ export interface Ad5xIfsSlot {
   current_identity_status: string
   stale_metadata_available: boolean
   permissions: Ad5xIfsSlotPermissions
+  compatibility?: Ad5xIfsSlotCompatibility
 }
 
 export interface Ad5xIfsOperation {
@@ -411,6 +440,7 @@ export interface Ad5xIfsModule {
   provider?: Ad5xIfsProviderState
   operations?: Ad5xIfsOperations
   spoolman?: Ad5xIfsSpoolmanStatus
+  provider_material_types?: readonly string[]
 }
 
 function isRecord (value: unknown): value is Record<string, unknown> {
@@ -450,6 +480,19 @@ export function isAd5xIfsMetadataResult (
 ): value is Ad5xIfsMetadataResult {
   if (!isRecord(value) || typeof value.ok !== 'boolean') return false
   if (!isInteger(value.slot) || value.slot < 0 || value.slot > 4) return false
+  if (expectedSlot !== undefined && value.slot !== expectedSlot) return false
+  if (value.result !== undefined && typeof value.result !== 'string') return false
+  if (value.error !== undefined && typeof value.error !== 'string') return false
+  if (!value.ok && typeof value.error !== 'string') return false
+  return isAd5xSnapshot(value.snapshot)
+}
+
+export function isAd5xIfsProviderIdentityResult (
+  value: unknown,
+  expectedSlot?: number
+): value is Ad5xIfsProviderIdentityResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') return false
+  if (!isInteger(value.slot) || value.slot < 1 || value.slot > 4) return false
   if (expectedSlot !== undefined && value.slot !== expectedSlot) return false
   if (value.result !== undefined && typeof value.result !== 'string') return false
   if (value.error !== undefined && typeof value.error !== 'string') return false
@@ -540,6 +583,25 @@ function isPermissions (value: unknown): value is Ad5xIfsSlotPermissions {
     typeof value.blocked_reason === 'string'
 }
 
+function isZmodIdentity (value: unknown): value is Ad5xIfsZmodIdentity {
+  return isRecord(value) &&
+    typeof value.material === 'string' &&
+    typeof value.color === 'string'
+}
+
+function isSlotCompatibility (value: unknown): value is Ad5xIfsSlotCompatibility {
+  if (!isRecord(value) || !isRecord(value.zmod)) return false
+  const zmod = value.zmod
+  return isInteger(zmod.slot) && zmod.slot >= 1 && zmod.slot <= 4 &&
+    isZmodIdentity(zmod.current) &&
+    isZmodIdentity(zmod.desired) &&
+    typeof zmod.sync_state === 'string' &&
+    typeof zmod.write_ready === 'boolean' &&
+    typeof zmod.lossy === 'boolean' &&
+    isStringArray(zmod.omitted_fields) &&
+    isStringArray(zmod.write_blockers)
+}
+
 function isSlot (value: unknown): value is Ad5xIfsSlot {
   if (!isRecord(value)) return false
 
@@ -554,7 +616,8 @@ function isSlot (value: unknown): value is Ad5xIfsSlot {
     typeof value.metadata_status === 'string' &&
     typeof value.current_identity_status === 'string' &&
     typeof value.stale_metadata_available === 'boolean' &&
-    isPermissions(value.permissions)
+    isPermissions(value.permissions) &&
+    (value.compatibility === undefined || isSlotCompatibility(value.compatibility))
 }
 
 function isOperation (value: unknown): value is Ad5xIfsOperation {
@@ -795,6 +858,7 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (value.provider !== undefined && !isProviderState(value.provider)) return false
   if (value.operations !== undefined && !isIfsOperations(value.operations)) return false
   if (value.spoolman !== undefined && !isSpoolmanStatus(value.spoolman)) return false
+  if (value.provider_material_types !== undefined && !isStringArray(value.provider_material_types)) return false
 
   return true
 }

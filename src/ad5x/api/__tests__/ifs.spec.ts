@@ -135,6 +135,22 @@ describe('AD5X IFS frontend contract', () => {
 
     expect(getIfsModule(snapshot)?.active_slot).toBe(1)
     expect(getIfsModule(snapshot)?.slots[0].spool.spoolman_spool_id).toBe(42)
+    const parsedSlot = getIfsModule(snapshot)?.slots[0]
+    if (parsedSlot) {
+      ;(parsedSlot as any).compatibility = {
+        zmod: {
+          slot: 1,
+          current: { material: 'PLA', color: '#112233' },
+          desired: { material: 'PETG', color: '#AABBCC' },
+          sync_state: 'diverged',
+          write_ready: true,
+          lossy: false,
+          omitted_fields: [],
+          write_blockers: []
+        }
+      }
+    }
+    expect(getIfsModule(snapshot)?.slots[0].compatibility?.zmod.write_blockers).toEqual([])
     expect(getIfsModule(snapshot)?.preprint_plan.rows[0].assignment?.slot).toBe(1)
     expect(getIfsModule(snapshot)?.topology?.external_source.id).toBe('external:bypass')
     expect(getIfsModule(snapshot)?.interoperability?.orca_lane_data.state).toBe('in_sync')

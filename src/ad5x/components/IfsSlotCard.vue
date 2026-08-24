@@ -37,7 +37,10 @@
           class="text-h6 mt-2 text-center"
           data-test="slot-material"
         >
-          {{ materialLabel }}
+          {{ providerLabel }}
+        </div>
+        <div class="text-caption text-center text--secondary">
+          IFS / Z-Mod
         </div>
         <div
           v-if="spoolName"
@@ -61,7 +64,7 @@
             outlined
             data-test="slot-spoolman"
           >
-            Spoolman #{{ slotData.spool.spoolman_spool_id }}
+            Spoolman spool ID: {{ slotData.spool.spoolman_spool_id }}<span v-if="slotData.spool.spoolman_filament_id !== null"> · filament ID: {{ slotData.spool.spoolman_filament_id }}</span>
           </v-chip>
           <v-chip
             v-else-if="slotData.current_identity_status === 'unassigned'"
@@ -80,6 +83,21 @@
           data-test="slot-remaining"
         >
           Остаток: {{ remainingLabel }}
+        </div>
+        <v-progress-linear
+          v-if="remainingPercent !== null"
+          class="mt-2"
+          height="8"
+          rounded
+          :value="remainingPercent"
+          data-test="slot-inventory-progress"
+        />
+        <div
+          v-if="mismatched"
+          class="text-caption warning--text text-center mt-2"
+          data-test="slot-provider-mismatch"
+        >
+          Данные IFS и катушки расходятся
         </div>
       </template>
 
@@ -128,6 +146,15 @@
         Выгрузить
       </v-btn>
       <v-btn
+        small
+        text
+        data-test="slot-provider-identity"
+        :disabled="actionsLocked"
+        @click="requestProviderIdentity"
+      >
+        Тип / цвет IFS
+      </v-btn>
+      <v-btn
         v-if="metadataAvailable"
         small
         text
@@ -135,7 +162,7 @@
         :disabled="actionsLocked"
         @click="requestMetadata"
       >
-        Материал
+        Данные катушки
       </v-btn>
       <v-btn
         v-if="spoolmanAvailable"
@@ -192,15 +219,21 @@ export default class IfsSlotCard extends Vue {
     this.$emit('metadata')
   }
 
+  requestProviderIdentity (): void {
+    if (this.actionsLocked) return
+    this.$emit('provider-identity')
+  }
+
   requestSpoolman (): void {
     if (this.actionsLocked || !this.spoolmanAvailable) return
     this.$emit('spoolman')
   }
 
-  get materialLabel (): string {
-    const material = this.slotData.spool.material || this.slotData.material || 'Материал не определён'
-    const variant = this.slotData.spool.variant
-    return variant ? `${material} · ${variant}` : material
+  get providerLabel (): string {
+    const current = this.slotData.compatibility?.zmod.current
+    const material = current?.material || this.slotData.material || 'Материал не определён'
+    const color = current?.color || this.slotData.color || 'Цвет не определён'
+    return `${material} · ${color}`
   }
 
   get spoolName (): string {
@@ -215,12 +248,24 @@ export default class IfsSlotCard extends Vue {
 
   get remainingLabel (): string {
     if (this.slotData.spool.remaining_g !== null) {
-      return `${Math.round(this.slotData.spool.remaining_g)} г`
+      const percent = this.remainingPercent
+      return `${Math.round(this.slotData.spool.remaining_g)} г${percent === null ? '' : ` · ${Math.round(percent)}%`}`
     }
     if (this.slotData.spool.remaining_length_mm !== null) {
       return `${Math.round(this.slotData.spool.remaining_length_mm / 1000)} м`
     }
     return ''
+  }
+
+  get remainingPercent (): number | null {
+    const { remaining_g: remaining, initial_g: initial } = this.slotData.spool
+    if (remaining === null || initial === null || initial <= 0) return null
+    return Math.max(0, Math.min(100, (remaining / initial) * 100))
+  }
+
+  get mismatched (): boolean {
+    const compatibility = this.slotData.compatibility?.zmod
+    return Boolean(compatibility && compatibility.sync_state === 'diverged' && (compatibility.desired.material || compatibility.desired.color))
   }
 }
 </script>

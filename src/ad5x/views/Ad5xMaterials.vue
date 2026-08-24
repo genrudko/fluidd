@@ -172,6 +172,7 @@
               :spoolman-available="spoolmanAvailableFor(slot)"
               @action="runSlotAction(slot, $event)"
               @metadata="openMetadata(slot)"
+              @provider-identity="openProviderIdentity(slot)"
               @spoolman="openSpoolman(slot)"
             />
           </v-col>
@@ -241,6 +242,17 @@
           @clear="clearMetadata"
         />
 
+        <ifs-provider-identity-dialog
+          v-model="providerIdentityDialogOpen"
+          :slot-data="providerIdentitySlot"
+          :material-types="ifsModule.provider_material_types || []"
+          :hardware-accepted="providerHardwareAccepted"
+          :busy="providerIdentityBusy"
+          :locked="actionsLocked"
+          :error="providerIdentityError"
+          @save="saveProviderIdentity"
+        />
+
         <ifs-spoolman-dialog
           v-model="spoolmanDialogOpen"
           :slot-data="spoolmanSlot"
@@ -288,6 +300,7 @@ import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
 import IfsMappingDialog from '@/ad5x/components/IfsMappingDialog.vue'
 import IfsPreprintPlan from '@/ad5x/components/IfsPreprintPlan.vue'
 import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
+import IfsProviderIdentityDialog from '@/ad5x/components/IfsProviderIdentityDialog.vue'
 import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
 import type { Ad5xState } from '@/ad5x/store/types'
@@ -295,7 +308,7 @@ import type { Ad5xState } from '@/ad5x/store/types'
 type IfsViewMode = 'auto' | 'hybrid' | 'expert'
 const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
 
-@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsInteroperabilityCard, IfsRecoveryCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsInteroperabilityCard, IfsRecoveryCard, IfsSlotCard, IfsMetadataDialog, IfsProviderIdentityDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
@@ -304,6 +317,10 @@ export default class Ad5xMaterials extends Vue {
   metadataSlotNumber = 0
   metadataBusy = false
   metadataError = ''
+  providerIdentityDialogOpen = false
+  providerIdentitySlotNumber = 0
+  providerIdentityBusy = false
+  providerIdentityError = ''
   spoolmanDialogOpen = false
   spoolmanSlotNumber = 0
   spoolmanQuery = ''
@@ -394,6 +411,7 @@ export default class Ad5xMaterials extends Vue {
     return this.refreshing ||
       this.actionInFlight !== null ||
       this.metadataBusy ||
+      this.providerIdentityBusy ||
       this.spoolmanBusy ||
       this.ifsSuspended ||
       this.ad5xState.apiStatus !== 'compatible' ||
@@ -410,6 +428,47 @@ export default class Ad5xMaterials extends Vue {
 
   metadataAvailableFor (slot: Ad5xIfsSlot): boolean {
     return slot.present && slot.spool.spoolman_spool_id === null
+  }
+
+  get providerIdentitySlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.providerIdentitySlotNumber) ?? null
+  }
+
+  get providerHardwareAccepted (): boolean {
+    const compatibility = this.ifsModule?.capabilities.compatibility
+    return typeof compatibility === 'object' && compatibility !== null &&
+      'zmod_projection_hardware_accepted' in compatibility &&
+      compatibility.zmod_projection_hardware_accepted === true
+  }
+
+  openProviderIdentity (slot: Ad5xIfsSlot): void {
+    if (!slot.present || this.actionsLocked) return
+    this.metadataDialogOpen = false
+    this.spoolmanDialogOpen = false
+    this.providerIdentitySlotNumber = slot.slot
+    this.providerIdentityError = ''
+    this.providerIdentityDialogOpen = true
+  }
+
+  async saveProviderIdentity (draft: { material: string; color: string; applySpoolProjection: boolean }): Promise<void> {
+    const slot = this.providerIdentitySlot
+    if (!slot?.present || this.actionsLocked || !this.providerHardwareAccepted) return
+    this.providerIdentityBusy = true
+    this.providerIdentityError = ''
+    try {
+      const result = await this.apiClient().updateIfsProviderIdentity(
+        slot.slot,
+        draft.material,
+        draft.color
+      )
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.providerIdentityError = result.error || 'Backend отклонил тип / цвет IFS'
+      else this.providerIdentityDialogOpen = false
+    } catch (error: unknown) {
+      this.providerIdentityError = error instanceof Error ? error.message : 'Не удалось сохранить тип / цвет IFS'
+    } finally {
+      this.providerIdentityBusy = false
+    }
   }
 
   openMetadata (slot: Ad5xIfsSlot): void {

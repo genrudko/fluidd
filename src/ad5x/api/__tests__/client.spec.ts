@@ -302,6 +302,22 @@ describe('Ad5xApiClient', () => {
     })
   })
 
+  it('updates provider identity through the semantic backend RPC and validates the result', async () => {
+    const payload = { ok: true, slot: 2, result: 'updated', snapshot: sharedSnapshot() }
+    const emit = vi.fn().mockResolvedValue(payload)
+    const client = new Ad5xApiClient({ emit })
+
+    await expect(client.updateIfsProviderIdentity(2, ' PETG ', '#aabbcc')).resolves.toEqual(payload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.provider.identity', {
+      params: { slot: 2, material: 'PETG', color: '#AABBCC' }
+    })
+
+    emit.mockResolvedValue({ ...payload, slot: 3 })
+    await expect(client.updateIfsProviderIdentity(2, 'PETG', '#AABBCC')).rejects.toThrow(
+      'IFS provider identity response is incompatible with API 1.0'
+    )
+  })
+
   it('loads the normalized Spoolman library through Plugins AD5X', async () => {
     const item = {
       spoolman_spool_id: 42,

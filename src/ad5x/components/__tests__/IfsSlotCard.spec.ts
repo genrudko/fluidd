@@ -57,7 +57,19 @@ function actionableSlot (): Ad5xIfsSlot {
     metadata_status: 'assigned',
     current_identity_status: 'assigned',
     stale_metadata_available: false,
-    permissions: { select_slot: true, load_slot: true, unload_slot: false, blocked_reason: '' }
+    permissions: { select_slot: true, load_slot: true, unload_slot: false, blocked_reason: '' },
+    compatibility: {
+      zmod: {
+        slot: 2,
+        current: { material: 'PLA', color: '#445566' },
+        desired: { material: 'PETG', color: '#112233' },
+        sync_state: 'diverged',
+        write_ready: true,
+        lossy: false,
+        omitted_fields: [],
+        write_blockers: []
+      }
+    }
   }
 }
 
@@ -91,6 +103,19 @@ describe('IfsSlotCard', () => {
     const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), spoolmanAvailable: true } })
     await wrapper.get('[data-test="slot-spoolman-manage"]').trigger('click')
     expect(wrapper.emitted('spoolman')).toHaveLength(1)
+  })
+
+  it('keeps provider identity primary and exposes mismatch plus inventory', async () => {
+    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot() } })
+
+    expect(wrapper.get('[data-test="slot-material"]').text()).toContain('PLA · #445566')
+    expect(wrapper.get('[data-test="slot-provider-mismatch"]').text()).toContain('расходятся')
+    expect(wrapper.get('[data-test="slot-inventory-progress"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="slot-remaining"]').text()).toContain('32%')
+    expect(wrapper.get('[data-test="slot-spoolman"]').text()).toContain('spool ID: 42')
+    expect(wrapper.get('[data-test="slot-spoolman"]').text()).toContain('filament ID: 2')
+    await wrapper.get('[data-test="slot-provider-identity"]').trigger('click')
+    expect(wrapper.emitted('provider-identity')).toHaveLength(1)
   })
 
   it('locks every action while another IFS operation is in flight', async () => {

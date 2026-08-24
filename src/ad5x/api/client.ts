@@ -12,6 +12,7 @@ import type {
   Ad5xIfsActionResult,
   Ad5xIfsAppearance,
   Ad5xIfsMetadataResult,
+  Ad5xIfsProviderIdentityResult,
   Ad5xIfsJobPreviewResult,
   Ad5xIfsLaunchPrepareResult,
   Ad5xIfsMappingDraftResult,
@@ -25,6 +26,7 @@ import {
   isAd5xIfsLaunchPrepareResult,
   isAd5xIfsMappingDraftResult,
   isAd5xIfsMetadataResult,
+  isAd5xIfsProviderIdentityResult,
   isAd5xSpoolmanLibraryResult,
   isAd5xSpoolmanMutationResult
 } from './ifs'
@@ -38,6 +40,7 @@ import {
 const SNAPSHOT_METHOD = 'server.plugins_ad5x.snapshot'
 const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
 const IFS_METADATA_METHOD = 'server.plugins_ad5x.ifs.metadata'
+const IFS_PROVIDER_IDENTITY_METHOD = 'server.plugins_ad5x.ifs.provider.identity'
 const IFS_JOB_PREVIEW_METHOD = 'server.plugins_ad5x.ifs.job.preview'
 const IFS_MAPPING_DRAFT_METHOD = 'server.plugins_ad5x.ifs.job.mapping.draft'
 const IFS_LAUNCH_PREPARE_METHOD = 'server.plugins_ad5x.ifs.job.launch.prepare'
@@ -164,6 +167,29 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
     const response = await this.socket.emit(IFS_METADATA_METHOD, { params: { slot, clear: true } })
     if (!isAd5xIfsMetadataResult(response, slot)) {
       throw new Error('IFS metadata response is incompatible with API 1.0')
+    }
+    return response
+  }
+
+  async updateIfsProviderIdentity (
+    slot: number,
+    material: string,
+    color: string
+  ): Promise<Ad5xIfsProviderIdentityResult> {
+    if (!Number.isInteger(slot) || slot < 1 || slot > 4) throw new Error(`Invalid IFS slot: ${slot}`)
+    const normalizedMaterial = material.trim()
+    const normalizedColor = color.trim().toUpperCase()
+    if (!normalizedMaterial) throw new Error('IFS provider material is required')
+    if (!/^#[0-9A-F]{6}$/.test(normalizedColor)) throw new Error('Invalid IFS provider color')
+    const response = await this.socket.emit(IFS_PROVIDER_IDENTITY_METHOD, {
+      params: {
+        slot,
+        material: normalizedMaterial,
+        color: normalizedColor
+      }
+    })
+    if (!isAd5xIfsProviderIdentityResult(response, slot)) {
+      throw new Error('IFS provider identity response is incompatible with API 1.0')
     }
     return response
   }
