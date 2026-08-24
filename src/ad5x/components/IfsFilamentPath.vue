@@ -12,14 +12,14 @@
         height="100%"
       >
         <v-card-title class="text-subtitle-1 py-3">
-          Путь материала
+          {{ $t('app.ad5x.ifs.path.title') }}
         </v-card-title>
         <v-card-text class="pt-0">
           <svg
             class="ifs-path"
             viewBox="0 0 800 210"
             role="img"
-            aria-label="IFS filament path"
+            :aria-label="$t('app.ad5x.ifs.path.ariaLabel').toString()"
             data-test="ifs-filament-path"
           >
             <g
@@ -147,10 +147,10 @@
             $ifs
           </v-icon>
           <div class="text-subtitle-2">
-            Внешняя подача
+            {{ $t('app.ad5x.ifs.path.externalFeed') }}
           </div>
           <div class="text-caption text--secondary mt-1">
-            Отдельный источник, не Slot 5
+            {{ $t('app.ad5x.ifs.path.separateSource') }}
           </div>
           <v-chip
             small
@@ -159,7 +159,7 @@
             :color="externalSource && externalSource.runtime_supported ? 'success' : undefined"
             data-test="ifs-bypass-runtime"
           >
-            {{ externalSource && externalSource.runtime_supported ? 'Runtime доступен' : 'Runtime не поддержан' }}
+            {{ externalSource && externalSource.runtime_supported ? $t('app.ad5x.ifs.path.runtimeAvailable') : $t('app.ad5x.ifs.path.runtimeUnsupported') }}
           </v-chip>
         </v-card-text>
       </v-card>
@@ -200,7 +200,7 @@ export default class IfsFilamentPath extends Vue {
         color: getIfsPrimaryColor(slot),
         present: slot.present,
         active: slot.active,
-        material: slot.present ? (slot.spool.material || slot.material || '—') : 'Пусто',
+        material: slot.present ? (slot.spool.material || slot.material || '—') : this.$t('app.ad5x.common.empty').toString(),
         innerRadius: slot.present ? 10 + (1 - (remainingPercent ?? 55) / 100) * 9 : 18
       }
     })

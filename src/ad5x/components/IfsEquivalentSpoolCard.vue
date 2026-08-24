@@ -5,7 +5,7 @@
     data-test="ifs-equivalent-spool"
   >
     <v-card-title class="d-flex align-center py-3">
-      <span>Резервная катушка</span><v-spacer />
+      <span>{{ $t('app.ad5x.ifs.equivalent.title') }}</span><v-spacer />
       <v-chip
         small
         label
@@ -77,7 +77,7 @@
                 class="text-caption primary--text mt-1"
                 data-test="equivalent-first-reserve"
               >
-                первый резерв
+                {{ $t('app.ad5x.ifs.equivalent.firstReserve') }}
               </div>
               <div
                 v-if="mode === 'expert'"
@@ -95,7 +95,7 @@
         class="text-caption text--secondary mt-3"
         data-test="equivalent-read-only"
       >
-        Только просмотр · автоматический переход выключен · аппаратное подтверждение отсутствует
+        {{ $t('app.ad5x.ifs.equivalent.readOnlyNotice') }}
       </div>
     </v-card-text>
   </v-card>
@@ -122,8 +122,8 @@ type IfsEquivalentSpoolMode = 'auto' | 'hybrid' | 'expert'
       render (createElement: CreateElement, context: RenderContext<Record<string, unknown>>) {
         const props = context.props
         const detail = props.unavailable
-          ? 'пусто / недоступно'
-          : [props.material || 'материал неизвестен', props.colorValue || 'цвет неизвестен'].join(' · ')
+          ? context.parent.$t('app.ad5x.ifs.equivalent.emptyUnavailable').toString()
+          : [props.material || context.parent.$t('app.ad5x.ifs.equivalent.materialUnknown').toString(), props.colorValue || context.parent.$t('app.ad5x.ifs.equivalent.colorUnknown').toString()].join(' · ')
         return createElement('div', {
           class: ['equivalent-node', { 'equivalent-node--eligible': props.eligible, 'equivalent-node--unavailable': props.unavailable }]
         }, [
@@ -154,26 +154,27 @@ export default class IfsEquivalentSpoolCard extends Vue {
   get sourceMaterial (): string { const value = this.preview.source?.material; return typeof value === 'string' ? value : '' }
   get sourceColor (): string { const value = this.preview.source?.color; return typeof value === 'string' ? value : '' }
   get statusLabel (): string {
-    if (this.available) return 'Резерв готов'
-    if (this.preview.status === 'no_candidate') return 'Резерв отсутствует'
-    if (this.preview.status === 'suspended') return 'Резерв недоступен'
-    return 'Статус неизвестен'
+    if (this.available) return this.$t('app.ad5x.ifs.equivalent.statusReady').toString()
+    if (this.preview.status === 'no_candidate') return this.$t('app.ad5x.ifs.equivalent.statusAbsent').toString()
+    if (this.preview.status === 'suspended') return this.$t('app.ad5x.ifs.equivalent.statusUnavailable').toString()
+    return this.$t('app.ad5x.ifs.equivalent.statusUnknown').toString()
   }
 
-  get unavailableLabel (): string { return this.preview.status === 'no_candidate' ? 'Резерв отсутствует' : 'Резерв недоступен' }
+  get unavailableLabel (): string { return this.preview.status === 'no_candidate' ? this.$t('app.ad5x.ifs.equivalent.statusAbsent').toString() : this.$t('app.ad5x.ifs.equivalent.statusUnavailable').toString() }
   get statusColor (): string | undefined { return this.available ? 'success' : undefined }
   candidateReason (candidate: Ad5xIfsEquivalentSpoolCandidate): string {
-    if (!candidate.present) return 'Недоступен: слот пуст'
-    if (candidate.eligible) return 'Подходит как резерв'
+    if (!candidate.present) return this.$t('app.ad5x.ifs.equivalent.candidateEmpty').toString()
+    if (candidate.eligible) return this.$t('app.ad5x.ifs.equivalent.candidateEligible').toString()
     const labels: Readonly<Record<string, string>> = {
-      slot_empty: 'слот пуст',
-      material_mismatch: 'другой материал',
-      color_mismatch: 'другой цвет',
-      provider_material_unknown: 'материал неизвестен',
-      provider_color_unknown: 'цвет неизвестен'
+      slot_empty: this.$t('app.ad5x.ifs.equivalent.blockerSlotEmpty').toString(),
+      material_mismatch: this.$t('app.ad5x.ifs.equivalent.blockerMaterialMismatch').toString(),
+      color_mismatch: this.$t('app.ad5x.ifs.equivalent.blockerColorMismatch').toString(),
+      provider_material_unknown: this.$t('app.ad5x.ifs.equivalent.blockerMaterialUnknown').toString(),
+      provider_color_unknown: this.$t('app.ad5x.ifs.equivalent.blockerColorUnknown').toString()
     }
-    const reasons = candidate.blockers.map(blocker => labels[blocker] ?? 'причина недоступна')
-    return `Не подходит: ${reasons.length ? reasons.join(' · ') : 'причина недоступна'}`
+    const fallback = this.$t('app.ad5x.ifs.equivalent.blockerUnknown').toString()
+    const reasons = candidate.blockers.map(blocker => labels[blocker] ?? fallback)
+    return this.$t('app.ad5x.ifs.equivalent.candidateRejected', { reasons: reasons.length ? reasons.join(' · ') : fallback }).toString()
   }
 }
 </script>

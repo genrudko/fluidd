@@ -3,10 +3,10 @@
     <div class="d-flex flex-wrap align-center mb-4 materials-header">
       <div>
         <div class="text-h5 font-weight-medium">
-          IFS / Материалы
+          {{ $t('app.ad5x.ifs.materials.title') }}
         </div>
         <div class="text-body-2 text--secondary mt-1">
-          Четыре физических слота AD5X. Состояние и катушки приходят из Plugins AD5X.
+          {{ $t('app.ad5x.ifs.materials.subtitle') }}
         </div>
       </div>
       <v-spacer />
@@ -21,26 +21,26 @@
           small
           value="auto"
         >
-          Auto
+          {{ $t('app.ad5x.ifs.materials.modeAuto') }}
         </v-btn>
         <v-btn
           small
           value="hybrid"
         >
-          Hybrid
+          {{ $t('app.ad5x.ifs.materials.modeHybrid') }}
         </v-btn>
         <v-btn
           small
           value="expert"
         >
-          Expert
+          {{ $t('app.ad5x.ifs.materials.modeExpert') }}
         </v-btn>
       </v-btn-toggle>
       <v-btn
         text
         :to="{ name: 'ad5x' }"
       >
-        Калибровка Z
+        {{ $t('app.ad5x.ifs.materials.zCalibration') }}
       </v-btn>
       <v-btn
         outlined
@@ -49,7 +49,7 @@
         :disabled="!supportsSharedBackend"
         @click="refreshSnapshot"
       >
-        Обновить
+        {{ $t('app.ad5x.ifs.materials.refresh') }}
       </v-btn>
     </div>
 
@@ -59,7 +59,7 @@
       type="info"
       data-test="ifs-backend-unavailable"
     >
-      Shared Plugins AD5X backend не обнаружен. Менеджер материалов недоступен.
+      {{ $t('app.ad5x.ifs.materials.backendUnavailable') }}
     </v-alert>
 
     <template v-else>
@@ -94,7 +94,7 @@
         type="warning"
         data-test="ifs-module-incompatible"
       >
-        IFS module отсутствует или его контракт несовместим с текущим Fluidd.
+        {{ $t('app.ad5x.ifs.materials.moduleUnavailable') }}
       </v-alert>
 
       <template v-else-if="ifsModule">
@@ -111,7 +111,7 @@
             label
             outlined
           >
-            Печать: {{ ifsModule.print_state }}
+            {{ $t('app.ad5x.ifs.materials.printState', { state: ifsModule.print_state }) }}
           </v-chip>
           <v-chip
             v-if="ifsModule.provider_mode"
@@ -147,7 +147,7 @@
           type="info"
           data-test="ifs-maintenance-suspended"
         >
-          Родной экран Flashforge сейчас владеет IFS. Plugins AD5X приостановил управление материалами, чтобы не конфликтовать с Z-Mod. После возврата в DISPLAY_OFF менеджер IFS снова станет доступен.
+          {{ $t('app.ad5x.ifs.materials.maintenanceSuspended') }}
         </v-alert>
 
         <ifs-filament-path
@@ -276,8 +276,8 @@
           type="info"
           data-test="ifs-operation"
         >
-          Операция IFS: {{ ifsModule.operation.action || ifsModule.operation.state }}
-          <span v-if="ifsModule.operation.slot"> · слот {{ ifsModule.operation.slot }}</span>
+          {{ $t('app.ad5x.ifs.materials.operation', { action: ifsModule.operation.action || ifsModule.operation.state }) }}
+          <span v-if="ifsModule.operation.slot"> · {{ $t('app.ad5x.ifs.materials.operationSlot', { slot: ifsModule.operation.slot }) }}</span>
         </v-alert>
       </template>
     </template>
@@ -460,10 +460,10 @@ export default class Ad5xMaterials extends Vue {
         draft.color
       )
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.providerIdentityError = result.error || 'Backend отклонил тип / цвет IFS'
+      if (!result.ok) this.providerIdentityError = result.error || this.$t('app.ad5x.ifs.materials.errorProviderRejected').toString()
       else this.providerIdentityDialogOpen = false
     } catch (error: unknown) {
-      this.providerIdentityError = error instanceof Error ? error.message : 'Не удалось сохранить тип / цвет IFS'
+      this.providerIdentityError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorProviderSave').toString()
     } finally {
       this.providerIdentityBusy = false
     }
@@ -485,10 +485,10 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().updateIfsMetadata(slot.slot, draft.spool, draft.appearance)
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.metadataError = result.error || 'Backend отклонил данные материала'
+      if (!result.ok) this.metadataError = result.error || this.$t('app.ad5x.ifs.materials.errorMetadataRejected').toString()
       else this.metadataDialogOpen = false
     } catch (error: unknown) {
-      this.metadataError = error instanceof Error ? error.message : 'Не удалось сохранить данные материала'
+      this.metadataError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMetadataSave').toString()
     } finally {
       this.metadataBusy = false
     }
@@ -502,10 +502,10 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().clearIfsMetadata(slot.slot)
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.metadataError = result.error || 'Backend отклонил очистку данных материала'
+      if (!result.ok) this.metadataError = result.error || this.$t('app.ad5x.ifs.materials.errorMetadataClearRejected').toString()
       else this.metadataDialogOpen = false
     } catch (error: unknown) {
-      this.metadataError = error instanceof Error ? error.message : 'Не удалось очистить данные материала'
+      this.metadataError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMetadataClear').toString()
     } finally {
       this.metadataBusy = false
     }
@@ -541,10 +541,10 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().getSpoolmanLibrary(this.spoolmanQuery)
       this.spoolmanItems = result.items
-      if (!result.ok) this.spoolmanError = result.error || 'Не удалось загрузить библиотеку Spoolman'
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanLibrary').toString()
     } catch (error: unknown) {
       this.spoolmanItems = []
-      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось загрузить библиотеку Spoolman'
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanLibrary').toString()
     } finally {
       this.spoolmanLoading = false
     }
@@ -558,9 +558,9 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().bindSpoolman(slot.slot, item.spoolman_spool_id)
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.spoolmanError = result.error || 'Spoolman отклонил привязку катушки'
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanBindRejected').toString()
     } catch (error: unknown) {
-      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось привязать катушку Spoolman'
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanBind').toString()
     } finally { this.spoolmanBusy = false }
   }
 
@@ -572,9 +572,9 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().unbindSpoolman(slot.slot)
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.spoolmanError = result.error || 'Spoolman отклонил снятие привязки'
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanUnbindRejected').toString()
     } catch (error: unknown) {
-      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось снять привязку Spoolman'
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanUnbind').toString()
     } finally { this.spoolmanBusy = false }
   }
 
@@ -586,9 +586,9 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().refreshSpoolman(slot.slot)
       applyAd5xSnapshot(this.$store, result.snapshot)
-      if (!result.ok) this.spoolmanError = result.error || 'Не удалось обновить данные Spoolman'
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanRefresh').toString()
     } catch (error: unknown) {
-      this.spoolmanError = error instanceof Error ? error.message : 'Не удалось обновить данные Spoolman'
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanRefresh').toString()
     } finally { this.spoolmanBusy = false }
   }
 
@@ -605,7 +605,7 @@ export default class Ad5xMaterials extends Vue {
     try {
       const result = await this.apiClient().previewIfsJob(filename)
       if (!result.ok || !result.job_preview || !result.preview_token || !result.snapshot) {
-        this.actionError = result.error || 'Backend отклонил предварительный анализ IFS'
+        this.actionError = result.error || this.$t('app.ad5x.ifs.materials.errorPreviewRejected').toString()
         return
       }
       this.mappingPreview = result.job_preview
@@ -614,7 +614,7 @@ export default class Ad5xMaterials extends Vue {
       applyAd5xSnapshot(this.$store, result.snapshot)
       this.mappingDialogOpen = true
     } catch (error: unknown) {
-      this.actionError = error instanceof Error ? error.message : 'Не удалось получить предварительное назначение IFS'
+      this.actionError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorPreview').toString()
     } finally {
       this.mappingBusy = false
     }
@@ -642,10 +642,10 @@ export default class Ad5xMaterials extends Vue {
           this.mappingLaunchGate = null
           this.mappingDraftToken = ''
           this.mappingPrepared = false
-          this.actionError = 'Данные файла изменились. Откройте назначение IFS снова для свежего анализа.'
+          this.actionError = this.$t('app.ad5x.ifs.materials.errorStalePreview').toString()
           return
         }
-        this.mappingError = result.error || 'Backend отклонил черновик назначения IFS'
+        this.mappingError = result.error || this.$t('app.ad5x.ifs.materials.errorMappingRejected').toString()
         return
       }
       this.mappingPreview = {
@@ -659,7 +659,7 @@ export default class Ad5xMaterials extends Vue {
       // Draft validation is intentionally stateless: its snapshot still carries
       // the provider plan, so applying it here would visually revert the manual map.
     } catch (error: unknown) {
-      this.mappingError = error instanceof Error ? error.message : 'Не удалось проверить назначение IFS'
+      this.mappingError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMappingValidate').toString()
     } finally {
       this.mappingBusy = false
     }
@@ -680,10 +680,10 @@ export default class Ad5xMaterials extends Vue {
           this.mappingPreviewToken = ''
           this.mappingDraftToken = ''
           this.mappingLaunchGate = null
-          this.actionError = 'Данные задания изменились. Откройте назначение IFS заново для свежей проверки.'
+          this.actionError = this.$t('app.ad5x.ifs.materials.errorStaleDraft').toString()
           return
         }
-        this.mappingError = result.error || 'Backend отклонил финальную проверку IFS'
+        this.mappingError = result.error || this.$t('app.ad5x.ifs.materials.errorPrepareRejected').toString()
         return
       }
       this.mappingPlan = result.preprint_plan
@@ -691,7 +691,7 @@ export default class Ad5xMaterials extends Vue {
       this.mappingDraftToken = result.mapping_draft.draft_token
       this.mappingPrepared = true
     } catch (error: unknown) {
-      this.mappingError = error instanceof Error ? error.message : 'Не удалось выполнить финальную проверку IFS'
+      this.mappingError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorPrepare').toString()
     } finally {
       this.mappingBusy = false
     }
@@ -706,12 +706,12 @@ export default class Ad5xMaterials extends Vue {
       const result = await this.apiClient().performIfsAction(action, slot.slot)
       applyAd5xSnapshot(this.$store, result.snapshot)
       if (!result.ok) {
-        this.actionError = result.error || 'Действие IFS отклонено backend'
+        this.actionError = result.error || this.$t('app.ad5x.ifs.materials.errorActionRejected').toString()
       }
     } catch (error: unknown) {
       this.actionError = error instanceof Error
         ? error.message
-        : 'Не удалось выполнить действие IFS'
+        : this.$t('app.ad5x.ifs.materials.errorAction').toString()
     } finally {
       this.actionInFlight = null
     }
@@ -719,8 +719,8 @@ export default class Ad5xMaterials extends Vue {
 
   get spoolmanLabel (): string {
     const spoolman = this.ifsModule?.spoolman
-    if (!spoolman?.configured) return 'Spoolman не настроен'
-    return spoolman.connected ? 'Spoolman подключен' : 'Spoolman недоступен'
+    if (!spoolman?.configured) return this.$t('app.ad5x.ifs.materials.spoolmanNotConfigured').toString()
+    return spoolman.connected ? this.$t('app.ad5x.ifs.materials.spoolmanConnected').toString() : this.$t('app.ad5x.ifs.materials.spoolmanUnavailable').toString()
   }
 
   private apiClient (): Ad5xApiClient {

@@ -5,7 +5,7 @@
     data-test="ifs-recovery"
   >
     <v-card-title class="d-flex flex-wrap align-center py-3">
-      <span>Recovery IFS</span>
+      <span>{{ $t('app.ad5x.ifs.recovery.title') }}</span>
       <v-spacer />
       <v-chip
         small
@@ -13,7 +13,7 @@
         :color="statusColor"
         data-test="ifs-recovery-state"
       >
-        {{ preview.status }}
+        {{ statusLabel }}
       </v-chip>
     </v-card-title>
     <v-card-text>
@@ -24,7 +24,7 @@
         type="warning"
         data-test="ifs-recovery-driver-error"
       >
-        Z-Mod сообщает ошибку драйвера IFS (state 127).
+        {{ $t('app.ad5x.ifs.recovery.driverError') }}
       </v-alert>
       <v-alert
         v-else-if="preview.evidence.need_insert"
@@ -33,15 +33,15 @@
         type="info"
         data-test="ifs-recovery-insert"
       >
-        Z-Mod ожидает auto-insert для IFS {{ preview.evidence.insert_slot || '?' }}.
+        {{ $t('app.ad5x.ifs.recovery.autoInsert', { slot: preview.evidence.insert_slot || '?' }) }}
       </v-alert>
       <div class="text-caption text--secondary">
-        Recovery-семантика показана только для диагностики. Выполнение отключено до hardware acceptance.
+        {{ $t('app.ad5x.ifs.recovery.description') }}
       </div>
       <template v-if="expert">
         <v-divider class="my-3" />
         <div class="text-body-2 font-weight-medium mb-2">
-          Source-verified provider primitives
+          {{ $t('app.ad5x.ifs.recovery.sourceVerifiedPrimitives') }}
         </div>
         <div
           v-for="item in preview.primitives"
@@ -49,13 +49,13 @@
           class="text-caption mb-1"
           data-test="ifs-recovery-primitive"
         >
-          {{ item.id }} → {{ item.provider_command }} · {{ item.scope }} · execution disabled
+          {{ item.id }} → {{ item.provider_command }} · {{ item.scope }} · {{ $t('app.ad5x.ifs.recovery.executionDisabled') }}
         </div>
         <div
           class="text-caption text--secondary mt-2"
           data-test="ifs-recovery-sequences"
         >
-          driver retry={{ sequence('driver_error_retry') }} · timeout cleanup={{ sequence('timeout_cleanup') }}
+          {{ $t('app.ad5x.ifs.recovery.sequenceSummary', { driver: sequence('driver_error_retry'), timeout: sequence('timeout_cleanup') }) }}
         </div>
       </template>
     </v-card-text>
@@ -78,6 +78,15 @@ export default class IfsRecoveryCard extends Vue {
     return undefined
   }
 
-  sequence (name: string): string { return (this.preview.provider_sequences[name] ?? []).join(' → ') || 'none' }
+  get statusLabel (): string {
+    const labels: Readonly<Record<string, string>> = {
+      idle: this.$t('app.ad5x.ifs.recovery.statusIdle').toString(),
+      attention: this.$t('app.ad5x.ifs.recovery.statusAttention').toString(),
+      driver_error: this.$t('app.ad5x.ifs.recovery.statusDriverError').toString()
+    }
+    return labels[this.preview.status] ?? this.preview.status
+  }
+
+  sequence (name: string): string { return (this.preview.provider_sequences[name] ?? []).join(' → ') || this.$t('app.ad5x.common.none').toString() }
 }
 </script>

@@ -7,7 +7,7 @@
     :data-slot="slotData.slot"
   >
     <v-card-title class="d-flex align-center py-3">
-      <span class="text-subtitle-1 font-weight-bold">Слот {{ slotData.slot }}</span>
+      <span class="text-subtitle-1 font-weight-bold">{{ $t('app.ad5x.ifs.slot.title', { slot: slotData.slot }) }}</span>
       <v-spacer />
       <v-chip
         v-if="slotData.active"
@@ -16,7 +16,7 @@
         label
         data-test="slot-active"
       >
-        Активен
+        {{ $t('app.ad5x.ifs.slot.active') }}
       </v-chip>
       <v-chip
         v-else-if="slotData.stall"
@@ -25,7 +25,7 @@
         label
         data-test="slot-stall"
       >
-        Ошибка подачи
+        {{ $t('app.ad5x.ifs.slot.feedError') }}
       </v-chip>
     </v-card-title>
 
@@ -64,7 +64,7 @@
             outlined
             data-test="slot-spoolman"
           >
-            Spoolman spool ID: {{ slotData.spool.spoolman_spool_id }}<span v-if="slotData.spool.spoolman_filament_id !== null"> · filament ID: {{ slotData.spool.spoolman_filament_id }}</span>
+            {{ $t('app.ad5x.ifs.slot.spoolmanSpoolId') }}: {{ slotData.spool.spoolman_spool_id }}<span v-if="slotData.spool.spoolman_filament_id !== null"> · {{ $t('app.ad5x.ifs.slot.filamentId') }}: {{ slotData.spool.spoolman_filament_id }}</span>
           </v-chip>
           <v-chip
             v-else-if="slotData.current_identity_status === 'unassigned'"
@@ -73,7 +73,7 @@
             outlined
             data-test="slot-unassigned"
           >
-            Катушка не назначена
+            {{ $t('app.ad5x.ifs.slot.unassigned') }}
           </v-chip>
         </div>
 
@@ -82,7 +82,7 @@
           class="text-body-2 text-center mt-3"
           data-test="slot-remaining"
         >
-          Остаток: {{ remainingLabel }}
+          {{ $t('app.ad5x.ifs.slot.remaining', { value: remainingLabel }) }}
         </div>
         <v-progress-linear
           v-if="remainingPercent !== null"
@@ -97,7 +97,7 @@
           class="text-caption warning--text text-center mt-2"
           data-test="slot-provider-mismatch"
         >
-          Данные IFS и катушки расходятся
+          {{ $t('app.ad5x.ifs.slot.mismatch') }}
         </div>
       </template>
 
@@ -106,7 +106,7 @@
         class="text-body-1 text-center text--secondary mt-3"
         data-test="slot-empty"
       >
-        Пусто
+        {{ $t('app.ad5x.common.empty') }}
       </div>
     </v-card-text>
 
@@ -123,7 +123,7 @@
         :loading="isActionLoading('select_slot')"
         @click="requestAction('select_slot')"
       >
-        Выбрать
+        {{ $t('app.ad5x.ifs.slot.select') }}
       </v-btn>
       <v-btn
         small
@@ -133,7 +133,7 @@
         :loading="isActionLoading('load_slot')"
         @click="requestAction('load_slot')"
       >
-        Загрузить
+        {{ $t('app.ad5x.ifs.slot.load') }}
       </v-btn>
       <v-btn
         small
@@ -143,7 +143,7 @@
         :loading="isActionLoading('unload_slot')"
         @click="requestAction('unload_slot')"
       >
-        Выгрузить
+        {{ $t('app.ad5x.ifs.slot.unload') }}
       </v-btn>
       <v-btn
         small
@@ -152,7 +152,7 @@
         :disabled="actionsLocked"
         @click="requestProviderIdentity"
       >
-        Тип / цвет IFS
+        {{ $t('app.ad5x.ifs.slot.providerIdentity') }}
       </v-btn>
       <v-btn
         v-if="metadataAvailable"
@@ -162,7 +162,7 @@
         :disabled="actionsLocked"
         @click="requestMetadata"
       >
-        Данные катушки
+        {{ $t('app.ad5x.ifs.slot.spoolData') }}
       </v-btn>
       <v-btn
         v-if="spoolmanAvailable"
@@ -231,8 +231,8 @@ export default class IfsSlotCard extends Vue {
 
   get providerLabel (): string {
     const current = this.slotData.compatibility?.zmod.current
-    const material = current?.material || this.slotData.material || 'Материал не определён'
-    const color = current?.color || this.slotData.color || 'Цвет не определён'
+    const material = current?.material || this.slotData.material || this.$t('app.ad5x.ifs.slot.materialUnknown').toString()
+    const color = current?.color || this.slotData.color || this.$t('app.ad5x.ifs.slot.colorUnknown').toString()
     return `${material} · ${color}`
   }
 
@@ -249,10 +249,10 @@ export default class IfsSlotCard extends Vue {
   get remainingLabel (): string {
     if (this.slotData.spool.remaining_g !== null) {
       const percent = this.remainingPercent
-      return `${Math.round(this.slotData.spool.remaining_g)} г${percent === null ? '' : ` · ${Math.round(percent)}%`}`
+      return `${this.$t('app.ad5x.common.grams', { value: Math.round(this.slotData.spool.remaining_g) })}${percent === null ? '' : ` · ${Math.round(percent)}%`}`
     }
     if (this.slotData.spool.remaining_length_mm !== null) {
-      return `${Math.round(this.slotData.spool.remaining_length_mm / 1000)} м`
+      return this.$t('app.ad5x.common.meters', { value: Math.round(this.slotData.spool.remaining_length_mm / 1000) }).toString()
     }
     return ''
   }

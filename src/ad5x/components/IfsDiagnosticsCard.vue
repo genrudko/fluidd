@@ -5,14 +5,14 @@
     data-test="ifs-diagnostics"
   >
     <v-card-title class="d-flex flex-wrap align-center py-3">
-      <span>Диагностика IFS</span>
+      <span>{{ $t('app.ad5x.ifs.diagnostics.title') }}</span>
       <v-spacer />
       <v-chip
         small
         label
         outlined
       >
-        read-only
+        {{ $t('app.ad5x.common.readOnly') }}
       </v-chip>
     </v-card-title>
     <v-card-text>
@@ -36,7 +36,7 @@
         </v-col>
       </v-row>
       <div class="text-caption text--secondary mt-3">
-        Сырые/нормализованные сигналы Z-Mod для диагностики. Они не являются командами управления или recovery-действиями.
+        {{ $t('app.ad5x.ifs.diagnostics.description') }}
       </div>
     </v-card-text>
   </v-card>
@@ -57,19 +57,19 @@ export default class IfsDiagnosticsCard extends Vue {
   @Prop({ default: null }) readonly filamentAtToolhead!: boolean | null
 
   mask (value: number): string { return `0b${(value & 0xF).toString(2).padStart(4, '0')}` }
-  yesNo (value: boolean | null): string { return value === null ? 'неизвестно' : (value ? 'да' : 'нет') }
+  yesNo (value: boolean | null): string { return value === null ? this.$t('app.ad5x.common.unknown').toString() : (value ? this.$t('app.ad5x.common.yes').toString() : this.$t('app.ad5x.common.no').toString()) }
 
   get rows (): DiagnosticRow[] {
     return [
-      { label: 'IFS state code', value: String(this.stateCode), test: 'diag-state-code' },
-      { label: 'Активный слот', value: this.activeSlot ? `IFS ${this.activeSlot}` : 'нет', test: 'diag-active-slot' },
-      { label: 'Runtime active slot', value: this.diagnostics.runtime_active_slot ? `IFS ${this.diagnostics.runtime_active_slot}` : 'нет', test: 'diag-runtime-slot' },
-      { label: 'F13 chan (raw)', value: String(this.diagnostics.raw_channel), test: 'diag-raw-channel' },
-      { label: 'F13 silk_state', value: this.mask(this.diagnostics.silk_mask), test: 'diag-silk-mask' },
-      { label: 'F13 stall_state', value: this.mask(this.diagnostics.stall_mask), test: 'diag-stall-mask' },
-      { label: 'Insert slot', value: this.diagnostics.insert_slot ? `IFS ${this.diagnostics.insert_slot}` : 'нет', test: 'diag-insert-slot' },
-      { label: 'NeedInsert', value: this.yesNo(this.diagnostics.need_insert), test: 'diag-need-insert' },
-      { label: 'Filament at toolhead', value: this.yesNo(this.filamentAtToolhead), test: 'diag-toolhead' }
+      { label: this.$t('app.ad5x.ifs.diagnostics.stateCode').toString(), value: String(this.stateCode), test: 'diag-state-code' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.activeSlot').toString(), value: this.activeSlot ? `IFS ${this.activeSlot}` : this.$t('app.ad5x.common.none').toString(), test: 'diag-active-slot' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.runtimeActiveSlot').toString(), value: this.diagnostics.runtime_active_slot ? `IFS ${this.diagnostics.runtime_active_slot}` : this.$t('app.ad5x.common.none').toString(), test: 'diag-runtime-slot' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.rawChannel').toString(), value: String(this.diagnostics.raw_channel), test: 'diag-raw-channel' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.silkState').toString(), value: this.mask(this.diagnostics.silk_mask), test: 'diag-silk-mask' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.stallState').toString(), value: this.mask(this.diagnostics.stall_mask), test: 'diag-stall-mask' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.insertSlot').toString(), value: this.diagnostics.insert_slot ? `IFS ${this.diagnostics.insert_slot}` : this.$t('app.ad5x.common.none').toString(), test: 'diag-insert-slot' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.needInsert').toString(), value: this.yesNo(this.diagnostics.need_insert), test: 'diag-need-insert' },
+      { label: this.$t('app.ad5x.ifs.diagnostics.filamentAtToolhead').toString(), value: this.yesNo(this.filamentAtToolhead), test: 'diag-toolhead' }
     ]
   }
 }

@@ -1,5 +1,6 @@
 import { shallowMount } from '@vue/test-utils'
 import IfsRecoveryCard from '../IfsRecoveryCard.vue'
+import i18n from '@/plugins/i18n'
 
 const base = {
   provider: 'zmod',
@@ -18,8 +19,9 @@ const base = {
 }
 
 describe('IfsRecoveryCard', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('shows source-verified primitives only as read-only expert detail', () => {
-    const wrapper = shallowMount(IfsRecoveryCard, { propsData: { preview: base, expert: true } })
+    const wrapper = shallowMount(IfsRecoveryCard, { i18n, propsData: { preview: base, expert: true } })
     expect(wrapper.findAll('[data-test="ifs-recovery-primitive"]')).toHaveLength(4)
     expect(wrapper.text()).toContain('execution disabled')
     expect(wrapper.findAll('v-btn-stub')).toHaveLength(0)
@@ -27,13 +29,13 @@ describe('IfsRecoveryCard', () => {
 
   it('surfaces driver error evidence without turning it into an action', () => {
     const preview = { ...base, status: 'driver_error', evidence: { ...base.evidence, state_code: 127, driver_error: true } }
-    const wrapper = shallowMount(IfsRecoveryCard, { propsData: { preview, expert: false } })
+    const wrapper = shallowMount(IfsRecoveryCard, { i18n, propsData: { preview, expert: false } })
     expect(wrapper.find('[data-test="ifs-recovery-driver-error"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-test="ifs-recovery-primitive"]')).toHaveLength(0)
   })
 
   it('renders provider sequences as evidence in expert mode', () => {
-    const wrapper = shallowMount(IfsRecoveryCard, { propsData: { preview: base, expert: true } })
+    const wrapper = shallowMount(IfsRecoveryCard, { i18n, propsData: { preview: base, expert: true } })
     expect(wrapper.find('[data-test="ifs-recovery-sequences"]').text()).toContain('IFS_F112 → IFS_F18')
   })
 })

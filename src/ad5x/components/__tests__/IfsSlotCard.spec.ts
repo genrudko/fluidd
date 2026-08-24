@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import type { Ad5xIfsSlot } from '@/ad5x/api/ifs'
 import vuetify from '@/plugins/vuetify'
 import IfsSlotCard from '../IfsSlotCard.vue'
+import i18n from '@/plugins/i18n'
 
 function emptySlotWithStaleMetadata (): Ad5xIfsSlot {
   return {
@@ -74,17 +75,18 @@ function actionableSlot (): Ad5xIfsSlot {
 }
 
 describe('IfsSlotCard', () => {
+  beforeEach(() => { i18n.locale = 'en' })
   it('never presents stale spool identity as installed when the physical slot is empty', () => {
-    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: emptySlotWithStaleMetadata() } })
+    const wrapper = mount(IfsSlotCard, { vuetify, i18n, propsData: { slotData: emptySlotWithStaleMetadata() } })
 
-    expect(wrapper.get('[data-test="slot-empty"]').text()).toBe('Пусто')
+    expect(wrapper.get('[data-test="slot-empty"]').text()).toBe('Empty')
     expect(wrapper.find('[data-test="slot-material"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="slot-spoolman"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Old spool')
   })
 
   it('emits only backend-permitted IFS actions', async () => {
-    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot() } })
+    const wrapper = mount(IfsSlotCard, { vuetify, i18n, propsData: { slotData: actionableSlot() } })
 
     await wrapper.get('[data-test="slot-select"]').trigger('click')
     await wrapper.get('[data-test="slot-load"]').trigger('click')
@@ -94,22 +96,22 @@ describe('IfsSlotCard', () => {
   })
 
   it('opens manual material metadata only when the page allows it', async () => {
-    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), metadataAvailable: true } })
+    const wrapper = mount(IfsSlotCard, { vuetify, i18n, propsData: { slotData: actionableSlot(), metadataAvailable: true } })
     await wrapper.get('[data-test="slot-metadata-manage"]').trigger('click')
     expect(wrapper.emitted('metadata')).toHaveLength(1)
   })
 
   it('opens Spoolman management only when integration is available', async () => {
-    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot(), spoolmanAvailable: true } })
+    const wrapper = mount(IfsSlotCard, { vuetify, i18n, propsData: { slotData: actionableSlot(), spoolmanAvailable: true } })
     await wrapper.get('[data-test="slot-spoolman-manage"]').trigger('click')
     expect(wrapper.emitted('spoolman')).toHaveLength(1)
   })
 
   it('keeps provider identity primary and exposes mismatch plus inventory', async () => {
-    const wrapper = mount(IfsSlotCard, { vuetify, propsData: { slotData: actionableSlot() } })
+    const wrapper = mount(IfsSlotCard, { vuetify, i18n, propsData: { slotData: actionableSlot() } })
 
     expect(wrapper.get('[data-test="slot-material"]').text()).toContain('PLA · #445566')
-    expect(wrapper.get('[data-test="slot-provider-mismatch"]').text()).toContain('расходятся')
+    expect(wrapper.get('[data-test="slot-provider-mismatch"]').text()).toContain('differ')
     expect(wrapper.get('[data-test="slot-inventory-progress"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="slot-remaining"]').text()).toContain('32%')
     expect(wrapper.get('[data-test="slot-spoolman"]').text()).toContain('spool ID: 42')
@@ -121,6 +123,7 @@ describe('IfsSlotCard', () => {
   it('locks every action while another IFS operation is in flight', async () => {
     const wrapper = mount(IfsSlotCard, {
       vuetify,
+      i18n,
       propsData: { slotData: actionableSlot(), actionsLocked: true }
     })
 

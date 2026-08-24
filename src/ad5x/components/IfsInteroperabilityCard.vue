@@ -5,7 +5,7 @@
     data-test="ifs-interoperability"
   >
     <v-card-title class="d-flex flex-wrap align-center py-3">
-      <span>Интеграции</span><v-spacer />
+      <span>{{ $t('app.ad5x.ifs.interoperability.title') }}</span><v-spacer />
       <v-chip
         small
         label
@@ -20,7 +20,7 @@
         OrcaSlicer / Moonraker lane_data
       </div>
       <div class="text-caption text--secondary">
-        {{ orca.namespace }} · {{ orca.record_count }} lanes · target {{ orca.target_version }}
+        {{ orca.namespace }} · {{ $t('app.ad5x.ifs.interoperability.laneSummary', { count: orca.record_count, target: orca.target_version }) }}
       </div>
       <v-alert
         v-if="orca.error"
@@ -37,17 +37,17 @@
         class="text-caption text--secondary mt-2"
         data-test="ifs-orca-details"
       >
-        direction={{ orca.direction }} · publishable={{ orca.publishable ? 'yes' : 'no' }} · Moonraker agent={{ orca.requires_moonraker_agent ? 'required' : 'not required' }}
-        <span v-if="orca.conflicts.length"> · conflicts={{ orca.conflicts.length }}</span>
+        {{ $t('app.ad5x.ifs.interoperability.orcaDetails', { direction: orca.direction, publishable: orca.publishable ? $t('app.ad5x.common.yes') : $t('app.ad5x.common.no'), agent: orca.requires_moonraker_agent ? $t('app.ad5x.common.required') : $t('app.ad5x.common.notRequired') }) }}
+        <span v-if="orca.conflicts.length"> · {{ $t('app.ad5x.ifs.interoperability.conflicts', { count: orca.conflicts.length }) }}</span>
       </div>
       <v-divider class="my-4" />
       <div class="d-flex flex-wrap align-center">
         <div>
           <div class="text-body-2 font-weight-medium">
-            Внешняя / bypass подача
+            {{ $t('app.ad5x.ifs.interoperability.externalFeed') }}
           </div>
           <div class="text-caption text--secondary">
-            {{ external.id }} · отдельный источник, не Slot 5
+            {{ external.id }} · {{ $t('app.ad5x.ifs.interoperability.separateSource') }}
           </div>
         </div>
         <v-spacer />
@@ -58,14 +58,14 @@
           :color="external.runtime_supported ? 'success' : undefined"
           data-test="ifs-external-runtime"
         >
-          {{ external.runtime_supported ? 'runtime supported' : 'runtime не поддержан' }}
+          {{ external.runtime_supported ? $t('app.ad5x.ifs.interoperability.runtimeSupported') : $t('app.ad5x.ifs.interoperability.runtimeUnsupported') }}
         </v-chip>
       </div>
       <div
         v-if="expert"
         class="text-caption text--secondary mt-2"
       >
-        control={{ external.control_supported ? 'yes' : 'no' }} · kind={{ external.kind }}
+        {{ $t('app.ad5x.ifs.interoperability.externalDetails', { control: external.control_supported ? $t('app.ad5x.common.yes') : $t('app.ad5x.common.no'), kind: external.kind }) }}
       </div>
     </v-card-text>
   </v-card>
