@@ -1,0 +1,765 @@
+<template>
+  <v-container class="py-6">
+    <div class="d-flex flex-wrap align-center mb-4 materials-header">
+      <div>
+        <div class="text-h5 font-weight-medium">
+          {{ $t('app.ad5x.ifs.materials.title') }}
+        </div>
+        <div class="text-body-2 text--secondary mt-1">
+          {{ $t('app.ad5x.ifs.materials.subtitle') }}
+        </div>
+      </div>
+      <v-spacer />
+      <v-btn-toggle
+        v-model="viewMode"
+        mandatory
+        dense
+        class="mr-2"
+        data-test="ifs-view-mode"
+      >
+        <v-btn
+          small
+          value="auto"
+        >
+          {{ $t('app.ad5x.ifs.materials.modeAuto') }}
+        </v-btn>
+        <v-btn
+          small
+          value="hybrid"
+        >
+          {{ $t('app.ad5x.ifs.materials.modeHybrid') }}
+        </v-btn>
+        <v-btn
+          small
+          value="expert"
+        >
+          {{ $t('app.ad5x.ifs.materials.modeExpert') }}
+        </v-btn>
+      </v-btn-toggle>
+      <v-btn
+        text
+        :to="{ name: 'ad5x' }"
+      >
+        {{ $t('app.ad5x.ifs.materials.zCalibration') }}
+      </v-btn>
+      <v-btn
+        outlined
+        small
+        :loading="refreshing"
+        :disabled="!supportsSharedBackend"
+        @click="refreshSnapshot"
+      >
+        {{ $t('app.ad5x.ifs.materials.refresh') }}
+      </v-btn>
+    </div>
+
+    <v-alert
+      v-if="!supportsSharedBackend"
+      text
+      type="info"
+      data-test="ifs-backend-unavailable"
+    >
+      {{ $t('app.ad5x.ifs.materials.backendUnavailable') }}
+    </v-alert>
+
+    <template v-else>
+      <v-alert
+        v-if="ad5xState.apiStatus === 'error'"
+        text
+        type="warning"
+        data-test="ifs-api-error"
+      >
+        {{ ad5xState.error }}
+      </v-alert>
+
+      <v-alert
+        v-if="actionError"
+        text
+        type="error"
+        data-test="ifs-action-error"
+      >
+        {{ actionError }}
+      </v-alert>
+
+      <v-card
+        v-if="ad5xState.apiStatus === 'loading' && !ifsModule"
+        outlined
+      >
+        <v-card-text><v-progress-linear indeterminate /></v-card-text>
+      </v-card>
+
+      <v-alert
+        v-else-if="ad5xState.apiStatus === 'compatible' && !ifsModule"
+        text
+        type="warning"
+        data-test="ifs-module-incompatible"
+      >
+        {{ $t('app.ad5x.ifs.materials.moduleUnavailable') }}
+      </v-alert>
+
+      <template v-else-if="ifsModule">
+        <div class="d-flex flex-wrap align-center mb-3 materials-status">
+          <v-chip
+            small
+            label
+            :color="ifsModule.state === 'ready' ? 'success' : undefined"
+          >
+            IFS: {{ ifsModule.state }}
+          </v-chip>
+          <v-chip
+            small
+            label
+            outlined
+          >
+            {{ $t('app.ad5x.ifs.materials.printState', { state: ifsModule.print_state }) }}
+          </v-chip>
+          <v-chip
+            v-if="ifsModule.provider_mode"
+            small
+            label
+            outlined
+            data-test="ifs-provider-mode"
+          >
+            Z-Mod: {{ ifsModule.provider_mode }}
+          </v-chip>
+          <v-chip
+            v-if="ifsModule.spoolman"
+            small
+            label
+            outlined
+            :color="ifsModule.spoolman.connected ? 'success' : undefined"
+            data-test="ifs-spoolman-status"
+          >
+            {{ spoolmanLabel }}
+          </v-chip>
+          <v-chip
+            small
+            label
+            outlined
+          >
+            Backend {{ ad5xState.snapshot?.backend_version }}
+          </v-chip>
+        </div>
+
+        <v-alert
+          v-if="ifsSuspended"
+          text
+          type="info"
+          data-test="ifs-maintenance-suspended"
+        >
+          {{ $t('app.ad5x.ifs.materials.maintenanceSuspended') }}
+        </v-alert>
+
+        <ifs-filament-path
+          v-if="!ifsSuspended"
+          :slots="slots"
+          :external-source="ifsModule.topology ? ifsModule.topology.external_source : null"
+        />
+
+        <v-row v-if="!ifsSuspended">
+          <v-col
+            v-for="slot in slots"
+            :key="`ifs-slot-${slot.slot}`"
+            cols="12"
+            sm="6"
+            lg="3"
+          >
+            <ifs-slot-card
+              :slot-data="slot"
+              :actions-locked="actionsLocked"
+              :action-busy="actionBusyFor(slot)"
+              :metadata-available="metadataAvailableFor(slot)"
+              :spoolman-available="spoolmanAvailableFor(slot)"
+              @action="runSlotAction(slot, $event)"
+              @metadata="openMetadata(slot)"
+              @provider-identity="openProviderIdentity(slot)"
+              @spoolman="openSpoolman(slot)"
+            />
+          </v-col>
+        </v-row>
+
+        <ifs-equivalent-spool-card
+          v-if="!ifsSuspended && showEquivalentSpool && ifsModule.equivalent_spool"
+          :preview="ifsModule.equivalent_spool"
+          :mode="viewMode"
+        />
+
+        <ifs-diagnostics-card
+          v-if="!ifsSuspended && viewMode === 'expert' && ifsModule.diagnostics"
+          :diagnostics="ifsModule.diagnostics"
+          :state-code="ifsModule.state_code ?? 0"
+          :active-slot="ifsModule.active_slot"
+          :filament-at-toolhead="ifsModule.filament_at_toolhead"
+        />
+
+        <ifs-recovery-card
+          v-if="!ifsSuspended && ifsModule.recovery && (viewMode === 'expert' || ifsModule.recovery.status !== 'idle')"
+          :preview="ifsModule.recovery"
+          :expert="viewMode === 'expert'"
+        />
+
+        <ifs-interoperability-card
+          v-if="!ifsSuspended && viewMode !== 'auto' && ifsModule.topology && ifsModule.interoperability"
+          :topology="ifsModule.topology"
+          :interoperability="ifsModule.interoperability"
+          :expert="viewMode === 'expert'"
+        />
+
+        <ifs-preprint-plan
+          v-if="!ifsSuspended && showPreprintPlan"
+          :plan="ifsModule.preprint_plan"
+          :compact="preprintCompact"
+          :slots="slots"
+          :editable="canEditPreprint"
+          :editing="mappingBusy"
+          @edit="openMappingEditor"
+        />
+
+        <ifs-mapping-dialog
+          v-if="!ifsSuspended && mappingDisplayPlan"
+          v-model="mappingDialogOpen"
+          :preview="mappingPreview"
+          :preview-token="mappingPreviewToken"
+          :plan="mappingDisplayPlan"
+          :slots="slots"
+          :busy="mappingBusy"
+          :error="mappingError"
+          :provider-leveling="providerPrintLeveling"
+          :launch-gate="mappingLaunchGate"
+          :draft-token="mappingDraftToken"
+          :prepared="mappingPrepared"
+          @change="validateMappingDraft"
+          @prepare="prepareMappingLaunch"
+        />
+
+        <ifs-metadata-dialog
+          v-model="metadataDialogOpen"
+          :slot-data="metadataSlot"
+          :busy="metadataBusy"
+          :locked="actionsLocked"
+          :error="metadataError"
+          @save="saveMetadata"
+          @clear="clearMetadata"
+        />
+
+        <ifs-provider-identity-dialog
+          v-model="providerIdentityDialogOpen"
+          :slot-data="providerIdentitySlot"
+          :material-types="ifsModule.provider_material_types || []"
+          :hardware-accepted="providerHardwareAccepted"
+          :busy="providerIdentityBusy"
+          :locked="actionsLocked"
+          :error="providerIdentityError"
+          @save="saveProviderIdentity"
+        />
+
+        <ifs-spoolman-dialog
+          v-model="spoolmanDialogOpen"
+          :slot-data="spoolmanSlot"
+          :connected="spoolmanConnected"
+          :items="spoolmanItems"
+          :query.sync="spoolmanQuery"
+          :loading="spoolmanLoading"
+          :busy="spoolmanBusy"
+          :locked="actionsLocked"
+          :error="spoolmanError"
+          @search="searchSpoolman"
+          @bind="bindSpoolman"
+          @unbind="unbindSpoolman"
+          @refresh="refreshSpoolman"
+        />
+
+        <v-alert
+          v-if="ifsModule.operation.state !== 'idle'"
+          class="mt-4"
+          text
+          type="info"
+          data-test="ifs-operation"
+        >
+          {{ $t('app.ad5x.ifs.materials.operation', { action: ifsModule.operation.action || ifsModule.operation.state }) }}
+          <span v-if="ifsModule.operation.slot"> · {{ $t('app.ad5x.ifs.materials.operationSlot', { slot: ifsModule.operation.slot }) }}</span>
+        </v-alert>
+      </template>
+    </template>
+  </v-container>
+</template>
+
+<script lang="ts">
+import Vue from 'vue'
+import { Component, Watch } from 'vue-property-decorator'
+import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
+import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
+import { getIfsModule } from '@/ad5x/api/ifs'
+import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
+import IfsDiagnosticsCard from '@/ad5x/components/IfsDiagnosticsCard.vue'
+import IfsEquivalentSpoolCard from '@/ad5x/components/IfsEquivalentSpoolCard.vue'
+import IfsInteroperabilityCard from '@/ad5x/components/IfsInteroperabilityCard.vue'
+import IfsRecoveryCard from '@/ad5x/components/IfsRecoveryCard.vue'
+import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
+import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
+import IfsMappingDialog from '@/ad5x/components/IfsMappingDialog.vue'
+import IfsPreprintPlan from '@/ad5x/components/IfsPreprintPlan.vue'
+import IfsSpoolmanDialog from '@/ad5x/components/IfsSpoolmanDialog.vue'
+import IfsProviderIdentityDialog from '@/ad5x/components/IfsProviderIdentityDialog.vue'
+import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
+import { applyAd5xSnapshot, getAd5xState, initializeAd5x, refreshAd5x } from '@/ad5x/store'
+import type { Ad5xState } from '@/ad5x/store/types'
+
+type IfsViewMode = 'auto' | 'hybrid' | 'expert'
+const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
+
+@Component({ components: { IfsFilamentPath, IfsDiagnosticsCard, IfsEquivalentSpoolCard, IfsInteroperabilityCard, IfsRecoveryCard, IfsSlotCard, IfsMetadataDialog, IfsProviderIdentityDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+export default class Ad5xMaterials extends Vue {
+  refreshing = false
+  actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
+  actionError = ''
+  metadataDialogOpen = false
+  metadataSlotNumber = 0
+  metadataBusy = false
+  metadataError = ''
+  providerIdentityDialogOpen = false
+  providerIdentitySlotNumber = 0
+  providerIdentityBusy = false
+  providerIdentityError = ''
+  spoolmanDialogOpen = false
+  spoolmanSlotNumber = 0
+  spoolmanQuery = ''
+  spoolmanItems: readonly Ad5xSpoolmanLibraryItem[] = []
+  spoolmanLoading = false
+  spoolmanBusy = false
+  spoolmanError = ''
+  mappingDialogOpen = false
+  mappingBusy = false
+  mappingError = ''
+  mappingPreview: Ad5xIfsJobPreview | null = null
+  mappingPreviewToken = ''
+  mappingPlan: Ad5xIfsPreprintPlan | null = null
+  mappingLaunchGate: Ad5xIfsLaunchGate | null = null
+  mappingDraftToken = ''
+  mappingPrepared = false
+  viewMode: IfsViewMode = 'hybrid'
+
+  get showEquivalentSpool (): boolean {
+    const preview = this.ifsModule?.equivalent_spool
+    return Boolean(preview)
+  }
+
+  get showPreprintPlan (): boolean {
+    const plan = this.ifsModule?.preprint_plan
+    return Boolean(plan && (this.viewMode !== 'auto' || !plan.available || plan.status !== 'ready'))
+  }
+
+  get preprintCompact (): boolean { return this.viewMode !== 'expert' }
+
+  @Watch('viewMode')
+  onViewModeChanged (mode: IfsViewMode): void { localStorage.setItem(IFS_VIEW_MODE_KEY, mode) }
+
+  restoreViewMode (): void {
+    const saved = localStorage.getItem(IFS_VIEW_MODE_KEY)
+    if (saved === 'auto' || saved === 'hybrid' || saved === 'expert') this.viewMode = saved
+  }
+
+  get ad5xState (): Ad5xState {
+    return getAd5xState(this.$store)
+  }
+
+  get componentSupport () {
+    return this.$store.getters['server/componentSupport']
+  }
+
+  get supportsSharedBackend (): boolean {
+    return isSharedAd5xBackendAvailable(this.componentSupport)
+  }
+
+  get ifsModule (): Ad5xIfsModule | null {
+    return getIfsModule(this.ad5xState.snapshot)
+  }
+
+  get slots (): readonly Ad5xIfsSlot[] {
+    return [...(this.ifsModule?.slots ?? [])].sort((a, b) => a.slot - b.slot)
+  }
+
+  get ifsSuspended (): boolean {
+    return Boolean(this.ifsModule?.maintenance_suspended || this.ifsModule?.provider_mode === 'native_display')
+  }
+
+  get providerPrintLeveling (): 0 | 1 | null {
+    const value = this.ifsModule?.provider?.settings?.print_leveling
+    return value === 0 || value === 1 ? value : null
+  }
+
+  get canEditPreprint (): boolean {
+    return Boolean(
+      !this.ifsSuspended &&
+      this.ifsModule?.preprint_plan.available &&
+      this.ifsModule.preprint_plan.filename &&
+      this.ifsModule.operations?.preview_job !== false
+    )
+  }
+
+  get mappingDisplayPlan (): Ad5xIfsPreprintPlan | null {
+    return this.mappingPlan ?? this.ifsModule?.preprint_plan ?? null
+  }
+
+  get notifiedRevision (): number {
+    return this.ad5xState.notifiedRevision
+  }
+
+  get actionsLocked (): boolean {
+    return this.refreshing ||
+      this.actionInFlight !== null ||
+      this.metadataBusy ||
+      this.providerIdentityBusy ||
+      this.spoolmanBusy ||
+      this.ifsSuspended ||
+      this.ad5xState.apiStatus !== 'compatible' ||
+      (this.ifsModule?.operation.state ?? 'idle') !== 'idle'
+  }
+
+  actionBusyFor (slot: Ad5xIfsSlot): Ad5xIfsAction | null {
+    return this.actionInFlight?.slot === slot.slot ? this.actionInFlight.action : null
+  }
+
+  get metadataSlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.metadataSlotNumber) ?? null
+  }
+
+  metadataAvailableFor (slot: Ad5xIfsSlot): boolean {
+    return slot.present && slot.spool.spoolman_spool_id === null
+  }
+
+  get providerIdentitySlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.providerIdentitySlotNumber) ?? null
+  }
+
+  get providerHardwareAccepted (): boolean {
+    const compatibility = this.ifsModule?.capabilities.compatibility
+    return typeof compatibility === 'object' && compatibility !== null &&
+      'zmod_projection_hardware_accepted' in compatibility &&
+      compatibility.zmod_projection_hardware_accepted === true
+  }
+
+  openProviderIdentity (slot: Ad5xIfsSlot): void {
+    if (!slot.present || this.actionsLocked) return
+    this.metadataDialogOpen = false
+    this.spoolmanDialogOpen = false
+    this.providerIdentitySlotNumber = slot.slot
+    this.providerIdentityError = ''
+    this.providerIdentityDialogOpen = true
+  }
+
+  async saveProviderIdentity (draft: { material: string; color: string; applySpoolProjection: boolean }): Promise<void> {
+    const slot = this.providerIdentitySlot
+    if (!slot?.present || this.actionsLocked || !this.providerHardwareAccepted) return
+    this.providerIdentityBusy = true
+    this.providerIdentityError = ''
+    try {
+      const result = await this.apiClient().updateIfsProviderIdentity(
+        slot.slot,
+        draft.material,
+        draft.color
+      )
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.providerIdentityError = result.error || this.$t('app.ad5x.ifs.materials.errorProviderRejected').toString()
+      else this.providerIdentityDialogOpen = false
+    } catch (error: unknown) {
+      this.providerIdentityError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorProviderSave').toString()
+    } finally {
+      this.providerIdentityBusy = false
+    }
+  }
+
+  openMetadata (slot: Ad5xIfsSlot): void {
+    if (!this.metadataAvailableFor(slot) || this.actionsLocked) return
+    this.spoolmanDialogOpen = false
+    this.metadataSlotNumber = slot.slot
+    this.metadataError = ''
+    this.metadataDialogOpen = true
+  }
+
+  async saveMetadata (draft: Ad5xIfsMetadataDraft): Promise<void> {
+    const slot = this.metadataSlot
+    if (!slot || !this.metadataAvailableFor(slot) || this.actionsLocked) return
+    this.metadataBusy = true
+    this.metadataError = ''
+    try {
+      const result = await this.apiClient().updateIfsMetadata(slot.slot, draft.spool, draft.appearance)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.metadataError = result.error || this.$t('app.ad5x.ifs.materials.errorMetadataRejected').toString()
+      else this.metadataDialogOpen = false
+    } catch (error: unknown) {
+      this.metadataError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMetadataSave').toString()
+    } finally {
+      this.metadataBusy = false
+    }
+  }
+
+  async clearMetadata (): Promise<void> {
+    const slot = this.metadataSlot
+    if (!slot || slot.spool.source !== 'manual' || slot.spool.spoolman_spool_id !== null || this.actionsLocked) return
+    this.metadataBusy = true
+    this.metadataError = ''
+    try {
+      const result = await this.apiClient().clearIfsMetadata(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.metadataError = result.error || this.$t('app.ad5x.ifs.materials.errorMetadataClearRejected').toString()
+      else this.metadataDialogOpen = false
+    } catch (error: unknown) {
+      this.metadataError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMetadataClear').toString()
+    } finally {
+      this.metadataBusy = false
+    }
+  }
+
+  get spoolmanConnected (): boolean {
+    return this.ifsModule?.spoolman?.connected ?? false
+  }
+
+  get spoolmanSlot (): Ad5xIfsSlot | null {
+    return this.slots.find(slot => slot.slot === this.spoolmanSlotNumber) ?? null
+  }
+
+  spoolmanAvailableFor (slot: Ad5xIfsSlot): boolean {
+    return Boolean(this.ifsModule?.spoolman?.configured || slot.spool.spoolman_spool_id !== null)
+  }
+
+  async openSpoolman (slot: Ad5xIfsSlot): Promise<void> {
+    if (!this.spoolmanAvailableFor(slot) || this.actionsLocked) return
+    this.metadataDialogOpen = false
+    this.spoolmanSlotNumber = slot.slot
+    this.spoolmanQuery = ''
+    this.spoolmanItems = []
+    this.spoolmanError = ''
+    this.spoolmanDialogOpen = true
+    if (this.spoolmanConnected) await this.searchSpoolman()
+  }
+
+  async searchSpoolman (): Promise<void> {
+    if (!this.spoolmanConnected || this.spoolmanLoading || this.actionsLocked) return
+    this.spoolmanLoading = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().getSpoolmanLibrary(this.spoolmanQuery)
+      this.spoolmanItems = result.items
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanLibrary').toString()
+    } catch (error: unknown) {
+      this.spoolmanItems = []
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanLibrary').toString()
+    } finally {
+      this.spoolmanLoading = false
+    }
+  }
+
+  async bindSpoolman (item: Ad5xSpoolmanLibraryItem): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || !this.spoolmanConnected || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().bindSpoolman(slot.slot, item.spoolman_spool_id)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanBindRejected').toString()
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanBind').toString()
+    } finally { this.spoolmanBusy = false }
+  }
+
+  async unbindSpoolman (): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || slot.spool.spoolman_spool_id === null || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().unbindSpoolman(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanUnbindRejected').toString()
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanUnbind').toString()
+    } finally { this.spoolmanBusy = false }
+  }
+
+  async refreshSpoolman (): Promise<void> {
+    const slot = this.spoolmanSlot
+    if (!slot || !this.spoolmanConnected || this.actionsLocked) return
+    this.spoolmanBusy = true
+    this.spoolmanError = ''
+    try {
+      const result = await this.apiClient().refreshSpoolman(slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) this.spoolmanError = result.error || this.$t('app.ad5x.ifs.materials.errorSpoolmanRefresh').toString()
+    } catch (error: unknown) {
+      this.spoolmanError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorSpoolmanRefresh').toString()
+    } finally { this.spoolmanBusy = false }
+  }
+
+  async openMappingEditor (): Promise<void> {
+    const filename = this.ifsModule?.preprint_plan.filename ?? ''
+    if (!this.canEditPreprint || !filename || this.mappingBusy) return
+
+    this.mappingBusy = true
+    this.mappingError = ''
+    this.mappingLaunchGate = null
+    this.mappingDraftToken = ''
+    this.mappingPrepared = false
+    this.actionError = ''
+    try {
+      const result = await this.apiClient().previewIfsJob(filename)
+      if (!result.ok || !result.job_preview || !result.preview_token || !result.snapshot) {
+        this.actionError = result.error || this.$t('app.ad5x.ifs.materials.errorPreviewRejected').toString()
+        return
+      }
+      this.mappingPreview = result.job_preview
+      this.mappingPreviewToken = result.preview_token
+      this.mappingPlan = getIfsModule(result.snapshot)?.preprint_plan ?? this.ifsModule?.preprint_plan ?? null
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      this.mappingDialogOpen = true
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorPreview').toString()
+    } finally {
+      this.mappingBusy = false
+    }
+  }
+
+  async validateMappingDraft (resolvedToolMap: readonly number[], leveling: 0 | 1 | null = null): Promise<void> {
+    if (!this.mappingPreview || !this.mappingPreviewToken || this.mappingBusy) return
+
+    this.mappingBusy = true
+    this.mappingError = ''
+    this.mappingLaunchGate = null
+    this.mappingDraftToken = ''
+    this.mappingPrepared = false
+    try {
+      const result = await this.apiClient().draftIfsJobMapping(
+        this.mappingPreviewToken,
+        resolvedToolMap,
+        leveling === 0 || leveling === 1 ? leveling : undefined
+      )
+      if (!result.ok || !result.mapping_draft || !result.preprint_plan) {
+        const stale = result.mapping_draft?.blockers.includes('stale_preview') ?? false
+        if (stale) {
+          this.mappingDialogOpen = false
+          this.mappingPreviewToken = ''
+          this.mappingLaunchGate = null
+          this.mappingDraftToken = ''
+          this.mappingPrepared = false
+          this.actionError = this.$t('app.ad5x.ifs.materials.errorStalePreview').toString()
+          return
+        }
+        this.mappingError = result.error || this.$t('app.ad5x.ifs.materials.errorMappingRejected').toString()
+        return
+      }
+      this.mappingPreview = {
+        ...this.mappingPreview,
+        resolved_tool_map: [...result.mapping_draft.resolved_tool_map]
+      }
+      this.mappingPlan = result.preprint_plan
+      this.mappingLaunchGate = result.launch_gate ?? null
+      this.mappingDraftToken = result.mapping_draft.draft_token
+      this.mappingPrepared = false
+      // Draft validation is intentionally stateless: its snapshot still carries
+      // the provider plan, so applying it here would visually revert the manual map.
+    } catch (error: unknown) {
+      this.mappingError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorMappingValidate').toString()
+    } finally {
+      this.mappingBusy = false
+    }
+  }
+
+  async prepareMappingLaunch (resolvedToolMap: readonly number[], leveling: 0 | 1): Promise<void> {
+    const filename = this.mappingPreview?.filename ?? ''
+    if (!filename || !this.mappingPreviewToken || !this.mappingDraftToken || this.mappingBusy) return
+    this.mappingBusy = true
+    this.mappingError = ''
+    this.mappingPrepared = false
+    try {
+      const result = await this.apiClient().prepareIfsJobLaunch(filename, this.mappingPreviewToken, this.mappingDraftToken, resolvedToolMap, leveling)
+      if (!result.ok || !result.mapping_draft || !result.preprint_plan || !result.launch_gate) {
+        const blockers = result.mapping_draft?.blockers ?? []
+        if (blockers.includes('stale_preview') || blockers.includes('stale_draft')) {
+          this.mappingDialogOpen = false
+          this.mappingPreviewToken = ''
+          this.mappingDraftToken = ''
+          this.mappingLaunchGate = null
+          this.actionError = this.$t('app.ad5x.ifs.materials.errorStaleDraft').toString()
+          return
+        }
+        this.mappingError = result.error || this.$t('app.ad5x.ifs.materials.errorPrepareRejected').toString()
+        return
+      }
+      this.mappingPlan = result.preprint_plan
+      this.mappingLaunchGate = result.launch_gate
+      this.mappingDraftToken = result.mapping_draft.draft_token
+      this.mappingPrepared = true
+    } catch (error: unknown) {
+      this.mappingError = error instanceof Error ? error.message : this.$t('app.ad5x.ifs.materials.errorPrepare').toString()
+    } finally {
+      this.mappingBusy = false
+    }
+  }
+
+  async runSlotAction (slot: Ad5xIfsSlot, action: Ad5xIfsAction): Promise<void> {
+    if (this.actionsLocked || !slot.permissions[action]) return
+
+    this.actionInFlight = { action, slot: slot.slot }
+    this.actionError = ''
+    try {
+      const result = await this.apiClient().performIfsAction(action, slot.slot)
+      applyAd5xSnapshot(this.$store, result.snapshot)
+      if (!result.ok) {
+        this.actionError = result.error || this.$t('app.ad5x.ifs.materials.errorActionRejected').toString()
+      }
+    } catch (error: unknown) {
+      this.actionError = error instanceof Error
+        ? error.message
+        : this.$t('app.ad5x.ifs.materials.errorAction').toString()
+    } finally {
+      this.actionInFlight = null
+    }
+  }
+
+  get spoolmanLabel (): string {
+    const spoolman = this.ifsModule?.spoolman
+    if (!spoolman?.configured) return this.$t('app.ad5x.ifs.materials.spoolmanNotConfigured').toString()
+    return spoolman.connected ? this.$t('app.ad5x.ifs.materials.spoolmanConnected').toString() : this.$t('app.ad5x.ifs.materials.spoolmanUnavailable').toString()
+  }
+
+  private apiClient (): Ad5xApiClient {
+    return new Ad5xApiClient(resolveAd5xSocketTransport(this))
+  }
+
+  async refreshSnapshot (): Promise<void> {
+    if (!this.supportsSharedBackend || this.refreshing) return
+
+    this.refreshing = true
+    try {
+      await refreshAd5x(this.$store, this.apiClient())
+    } finally {
+      this.refreshing = false
+    }
+  }
+
+  @Watch('notifiedRevision')
+  async onNotifiedRevision (revision: number): Promise<void> {
+    const currentRevision = this.ad5xState.snapshot?.revision ?? 0
+    if (revision <= currentRevision) return
+    await this.refreshSnapshot()
+  }
+
+  async created (): Promise<void> {
+    this.restoreViewMode()
+    if (!this.supportsSharedBackend) {
+      await initializeAd5x(this.$store, false)
+      return
+    }
+
+    await initializeAd5x(this.$store, true, this.apiClient())
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.materials-header,
+.materials-status {
+  gap: 10px;
+}
+</style>

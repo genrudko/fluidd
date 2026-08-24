@@ -450,5 +450,11 @@ export const actions = {
 
   async notifySpoolmanStatusChanged ({ dispatch }, payload: { spoolman_connected: boolean }) {
     dispatch('spoolman/onStatusChanged', payload.spoolman_connected, { root: true })
+  },
+
+  async notifyPluginsAd5xSnapshotChanged ({ dispatch, rootState }, payload: { revision: number }) {
+    if ('ad5x' in rootState) {
+      await dispatch('ad5x/onSnapshotChanged', payload, { root: true })
+    }
   }
 } satisfies ActionTree<SocketState, RootState>

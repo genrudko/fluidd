@@ -1,0 +1,109 @@
+name: AD5X CI
+
+on:
+  push:
+    branches:
+      - ad5x-dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Test AD5X git deploy lifecycle
+        run: |
+          /bin/sh scripts/test-ad5x-fluidd-deploy.sh
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          pnpm i --frozen-lockfile
+
+      - name: Run lint
+        run: |
+          pnpm run lint --no-fix
+
+      - name: Run type check
+        run: |
+          pnpm run type-check
+
+      - name: Run tests
+        run: |
+          pnpm run test:unit
+
+      - name: Run circular references check
+        run: |
+          pnpm run circular-check
+
+      - name: Build
+        run: |
+          pnpm run build
+
+      - name: Prepare git-installable AD5X distribution
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_BRANCH: ad5x-dev
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -d dist/assets
+          INDEX_SHA="$(sha256sum dist/index.html | awk '{print $1}')"
+          export INDEX_SHA
+
+          rm -rf /tmp/ad5x-fluidd-dist
+          mkdir -p /tmp/ad5x-fluidd-dist/.ad5x
+          cp -a dist/. /tmp/ad5x-fluidd-dist/
+          cp scripts/ad5x-fluidd-deploy.sh /tmp/ad5x-fluidd-dist/.ad5x/deploy.sh
+          chmod 0755 /tmp/ad5x-fluidd-dist/.ad5x/deploy.sh
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = {
+              "schema": 1,
+              "source_repository": os.environ["SOURCE_REPOSITORY"],
+              "source_branch": os.environ["SOURCE_BRANCH"],
+              "source_sha": os.environ["SOURCE_SHA"],
+              "index_sha256": os.environ["INDEX_SHA"],
+          }
+          Path("/tmp/ad5x-fluidd-dist/.ad5x-build.json").write_text(
+              json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Publish ad5x-dist branch
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch --orphan ad5x-dist-publish
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/ad5x-fluidd-dist/. .
+
+          git add -A
+          git commit -m "build(ad5x): publish ${SOURCE_SHA}"
+          git push --force origin HEAD:refs/heads/ad5x-dist

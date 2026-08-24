@@ -1,0 +1,218 @@
+import { shallowMount } from '@vue/test-utils'
+import i18n from '@/plugins/i18n'
+import IfsMappingDialog from '../IfsMappingDialog.vue'
+import type { Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsPreprintPlan, Ad5xIfsSlot } from '@/ad5x/api/ifs'
+
+function slot (number: number, present = true): Ad5xIfsSlot {
+  return {
+    slot: number,
+    present,
+    active: false,
+    stall: false,
+    material: present ? 'PLA' : undefined,
+    color: present ? '#112233' : undefined,
+    spool: {
+      source: present ? 'manual' : '',
+      brand: '',
+      series: '',
+      name: present ? `Spool ${number}` : '',
+      material: present ? 'PLA' : '',
+      variant: '',
+      spoolman_id: null,
+      spoolman_spool_id: null,
+      spoolman_filament_id: null,
+      remaining_g: null,
+      remaining_length_mm: null,
+      initial_g: null,
+      used_g: null,
+      used_length_mm: null,
+      location: '',
+      archived: false,
+      nozzle_temp: null,
+      bed_temp: null,
+      orca_material: '',
+      orca_filament_id: '',
+      orca_setting_id: ''
+    },
+    appearance: { color_mode: 'solid', colors: present ? ['#112233'] : [], finish: '' },
+    metadata_status: present ? 'assigned' : 'none',
+    current_identity_status: present ? 'assigned' : 'empty',
+    stale_metadata_available: false,
+    permissions: { select_slot: false, load_slot: false, unload_slot: false, blocked_reason: '' }
+  }
+}
+
+function preview (): Ad5xIfsJobPreview {
+  return {
+    available: true,
+    source: 'zmod',
+    filename: 'demo.gcode',
+    requirements: [],
+    assignments: [],
+    allowed_tool_count: 3,
+    resolved_tool_map: [1, 2, 3],
+    auto_assign: {},
+    messages: [],
+    error: ''
+  }
+}
+
+function plan (): Ad5xIfsPreprintPlan {
+  return {
+    available: true,
+    source: 'zmod',
+    filename: 'demo.gcode',
+    status: 'ready',
+    rows: [
+      { tool: 0, requirement: { material: 'PLA', color: '#112233' }, assignment: { slot: 1, present: true, metadata_status: 'assigned', spool: {}, appearance: {} }, state: 'ready' },
+      { tool: 2, requirement: { material: 'PETG', color: '#445566' }, assignment: { slot: 3, present: true, metadata_status: 'assigned', spool: {}, appearance: {} }, state: 'ready' }
+    ],
+    warnings: [],
+    summary: { required_tools: 2, assigned_tools: 2, ready_tools: 2 },
+    auto_assign: {},
+    messages: [],
+    error: ''
+  }
+}
+
+function launchGate (ready = true): Ad5xIfsLaunchGate {
+  return {
+    candidate: ready,
+    write_enabled: false,
+    preview_token: 'a'.repeat(64),
+    strict_policy: true,
+    plan_status: ready ? 'ready' : 'blocked',
+    blockers: ready ? ['launch_write_not_enabled'] : ['assigned_slot_empty', 'launch_write_not_enabled'],
+    warnings: [],
+    hardware_acceptance: { required: true, accepted: false, reason: 'hardware_acceptance_required', exact_sha_required: true },
+    provider_launch_plan: {
+      provider: 'zmod',
+      command: 'PRINT_ZCOLOR',
+      parameters: { FILENAME: 'demo.gcode', LEVELING: 1, ALLOWED_TOOL_COUNT: 3, T0: 1, T1: 2, T2: 3 },
+      missing_parameters: [],
+      blockers: [],
+      ready: true,
+      execution_enabled: false
+    }
+  }
+}
+
+describe('IfsMappingDialog', () => {
+  beforeEach(() => { i18n.locale = 'en' })
+  it('requests one initial read-only dry-run when opened with a known provider leveling default', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: false, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    await wrapper.setProps({ value: true })
+    await wrapper.vm.$nextTick()
+    const changes = wrapper.emitted('change') || []
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.[0]).toEqual([1, 2, 3])
+    expect(changes[0]?.[1]).toBe(1)
+  })
+
+  it('shows backend dry-run readiness without implying launch is enabled', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', launchGate: launchGate(true) } })
+    const vm = wrapper.vm as any
+    expect(vm.dryRunAlertType).toBe('success')
+    expect(vm.dryRunStatusText).toContain('structurally ready')
+    expect(vm.dryRunStatusText).toContain('hardware acceptance')
+
+    await wrapper.setProps({ launchGate: launchGate(false) })
+    expect(vm.dryRunAlertType).toBe('warning')
+    expect(vm.dryRunStatusText).toContain('assigned_slot_empty')
+  })
+
+  it('emits a read-only final prepare only with a validated draft token and explicit leveling', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), draftToken: 'b'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1, launchGate: launchGate(true), prepared: false } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    expect(vm.canPrepare).toBe(true)
+    vm.prepareLaunch()
+    expect(wrapper.emitted('prepare')?.[0]?.[0]).toEqual([1, 2, 3])
+    expect(wrapper.emitted('prepare')?.[0]?.[1]).toBe(1)
+    await wrapper.setProps({ prepared: true })
+    expect(vm.dryRunStatusText).toContain('Final validation passed')
+  })
+
+  it('preserves hidden tools when editing one visible T-to-slot assignment', () => {
+    const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
+      propsData: {
+        value: true,
+        preview: preview(),
+        previewToken: 'a'.repeat(64),
+        plan: plan(),
+        slots: [slot(1), slot(2), slot(3), slot(4, false)],
+        busy: false,
+        error: ''
+      }
+    })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    vm.updateSlot(2, 4)
+
+    expect(wrapper.emitted('change')?.[0]?.[0]).toEqual([1, 2, 4])
+  })
+
+  it('labels live and empty physical slots from normalized IFS state', () => {
+    const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
+      propsData: {
+        value: true,
+        preview: preview(),
+        previewToken: 'a'.repeat(64),
+        plan: plan(),
+        slots: [slot(1), slot(2, false), slot(3)],
+        busy: false,
+        error: ''
+      }
+    })
+    const vm = wrapper.vm as any
+    expect(vm.slotItems.find((item: any) => item.value === 1).text).toContain('Spool 1')
+    expect(vm.slotItems.find((item: any) => item.value === 2).text).toContain('empty')
+    expect(vm.slotItems.find((item: any) => item.value === 4).text).toContain('unavailable')
+  })
+
+  it('restores the original automatic proposal after a manual draft edit', () => {
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '' } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    vm.updateSlot(0, 2)
+    expect(vm.canResetAutomatic).toBe(true)
+    vm.resetToAutomatic()
+    expect(vm.mapping).toEqual([1, 2, 3])
+    const changes = wrapper.emitted('change') || []
+    expect(changes[changes.length - 1]?.[0]).toEqual([1, 2, 3])
+    expect(vm.canResetAutomatic).toBe(false)
+  })
+
+  it('starts from the provider leveling default and emits an explicit dry-run choice', () => {
+    const wrapper = shallowMount(IfsMappingDialog, { i18n, propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1 } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    expect(vm.leveling).toBe(1)
+    expect(vm.providerLevelingLabel).toContain('probe the bed mesh')
+    vm.updateLeveling(0)
+    const changes = wrapper.emitted('change') || []
+    expect(changes[changes.length - 1]?.[0]).toEqual([1, 2, 3])
+    expect(changes[changes.length - 1]?.[1]).toBe(0)
+  })
+
+  it('ignores invalid slot edits', () => {
+    const wrapper = shallowMount(IfsMappingDialog, {
+      i18n,
+      propsData: {
+        value: true,
+        preview: preview(),
+        previewToken: 'a'.repeat(64),
+        plan: plan(),
+        slots: [slot(1), slot(2), slot(3), slot(4)],
+        busy: false,
+        error: ''
+      }
+    })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    vm.updateSlot(2, 5)
+    expect(wrapper.emitted('change')).toBeUndefined()
+  })
+})
