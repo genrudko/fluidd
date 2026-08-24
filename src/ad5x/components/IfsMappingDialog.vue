@@ -65,6 +65,15 @@
         </div>
 
         <v-alert
+          text
+          :type="dryRunAlertType"
+          class="mb-4"
+          data-test="mapping-dry-run-status"
+        >
+          {{ dryRunStatusText }}
+        </v-alert>
+
+        <v-alert
           v-if="error"
           text
           type="error"
@@ -172,6 +181,7 @@ import Vue from 'vue'
 import { Component, Prop, Watch } from 'vue-property-decorator'
 import type {
   Ad5xIfsJobPreview,
+  Ad5xIfsLaunchGate,
   Ad5xIfsPreprintPlan,
   Ad5xIfsPreprintRowState,
   Ad5xIfsSlot
@@ -208,6 +218,9 @@ export default class IfsMappingDialog extends Vue {
   @Prop({ type: Number, default: null })
   readonly providerLeveling!: 0 | 1 | null
 
+  @Prop({ type: Object, default: null })
+  readonly launchGate!: Ad5xIfsLaunchGate | null
+
   mapping: number[] = []
   automaticMapping: number[] = []
   leveling: 0 | 1 | null = null
@@ -216,6 +229,26 @@ export default class IfsMappingDialog extends Vue {
     if (this.providerLeveling === 1) return 'Z-Mod по умолчанию: снять карту'
     if (this.providerLeveling === 0) return 'Z-Mod по умолчанию: не снимать карту'
     return 'Z-Mod не сообщил значение по умолчанию — выберите явно'
+  }
+
+  get dryRunAlertType (): 'info' | 'success' | 'warning' {
+    if (!this.launchGate) return 'info'
+    return this.launchGate.candidate && this.launchGate.provider_launch_plan.ready ? 'success' : 'warning'
+  }
+
+  get dryRunStatusText (): string {
+    if (!this.launchGate) return 'Dry-run ещё не перепроверен backend. Измените назначение или режим карты стола.'
+    const providerPlan = this.launchGate.provider_launch_plan
+    if (this.launchGate.candidate && providerPlan.ready) {
+      return 'План PRINT_ZCOLOR структурно готов. Реальный запуск остаётся отключён до аппаратной приёмки.'
+    }
+    if (providerPlan.missing_parameters.includes('LEVELING')) {
+      return 'Для полного плана Z-Mod требуется явный выбор режима карты стола.'
+    }
+    const blockers = this.launchGate.blockers.filter(code => code !== 'launch_write_not_enabled')
+    return blockers.length
+      ? `Backend заблокировал dry-run: ${blockers.join(', ')}`
+      : 'План Z-Mod пока не готов к dry-run.'
   }
 
   get canResetAutomatic (): boolean {

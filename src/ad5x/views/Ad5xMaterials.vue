@@ -196,6 +196,7 @@
           :busy="mappingBusy"
           :error="mappingError"
           :provider-leveling="providerPrintLeveling"
+          :launch-gate="mappingLaunchGate"
           @change="validateMappingDraft"
         />
 
@@ -244,7 +245,7 @@
 import Vue from 'vue'
 import { Component, Watch } from 'vue-property-decorator'
 import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
-import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
+import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
@@ -281,6 +282,7 @@ export default class Ad5xMaterials extends Vue {
   mappingPreview: Ad5xIfsJobPreview | null = null
   mappingPreviewToken = ''
   mappingPlan: Ad5xIfsPreprintPlan | null = null
+  mappingLaunchGate: Ad5xIfsLaunchGate | null = null
   viewMode: IfsViewMode = 'hybrid'
 
   get showPreprintPlan (): boolean {
@@ -495,6 +497,7 @@ export default class Ad5xMaterials extends Vue {
 
     this.mappingBusy = true
     this.mappingError = ''
+    this.mappingLaunchGate = null
     this.actionError = ''
     try {
       const result = await this.apiClient().previewIfsJob(filename)
@@ -530,6 +533,7 @@ export default class Ad5xMaterials extends Vue {
         if (stale) {
           this.mappingDialogOpen = false
           this.mappingPreviewToken = ''
+          this.mappingLaunchGate = null
           this.actionError = 'Данные файла изменились. Откройте назначение IFS снова для свежего анализа.'
           return
         }
@@ -541,6 +545,7 @@ export default class Ad5xMaterials extends Vue {
         resolved_tool_map: [...result.mapping_draft.resolved_tool_map]
       }
       this.mappingPlan = result.preprint_plan
+      this.mappingLaunchGate = result.launch_gate ?? null
       // Draft validation is intentionally stateless: its snapshot still carries
       // the provider plan, so applying it here would visually revert the manual map.
     } catch (error: unknown) {

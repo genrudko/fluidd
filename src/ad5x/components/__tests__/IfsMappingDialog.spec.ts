@@ -1,6 +1,6 @@
 import { shallowMount } from '@vue/test-utils'
 import IfsMappingDialog from '../IfsMappingDialog.vue'
-import type { Ad5xIfsJobPreview, Ad5xIfsPreprintPlan, Ad5xIfsSlot } from '@/ad5x/api/ifs'
+import type { Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsPreprintPlan, Ad5xIfsSlot } from '@/ad5x/api/ifs'
 
 function slot (number: number, present = true): Ad5xIfsSlot {
   return {
@@ -74,7 +74,40 @@ function plan (): Ad5xIfsPreprintPlan {
   }
 }
 
+function launchGate (ready = true): Ad5xIfsLaunchGate {
+  return {
+    candidate: ready,
+    write_enabled: false,
+    preview_token: 'a'.repeat(64),
+    strict_policy: true,
+    plan_status: ready ? 'ready' : 'blocked',
+    blockers: ready ? ['launch_write_not_enabled'] : ['assigned_slot_empty', 'launch_write_not_enabled'],
+    warnings: [],
+    provider_launch_plan: {
+      provider: 'zmod',
+      command: 'PRINT_ZCOLOR',
+      parameters: { FILENAME: 'demo.gcode', LEVELING: 1, ALLOWED_TOOL_COUNT: 3, T0: 1, T1: 2, T2: 3 },
+      missing_parameters: [],
+      blockers: [],
+      ready: true,
+      execution_enabled: false
+    }
+  }
+}
+
 describe('IfsMappingDialog', () => {
+  it('shows backend dry-run readiness without implying launch is enabled', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', launchGate: launchGate(true) } })
+    const vm = wrapper.vm as any
+    expect(vm.dryRunAlertType).toBe('success')
+    expect(vm.dryRunStatusText).toContain('структурно готов')
+    expect(vm.dryRunStatusText).toContain('запуск остаётся отключён')
+
+    await wrapper.setProps({ launchGate: launchGate(false) })
+    expect(vm.dryRunAlertType).toBe('warning')
+    expect(vm.dryRunStatusText).toContain('assigned_slot_empty')
+  })
+
   it('preserves hidden tools when editing one visible T-to-slot assignment', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
       propsData: {

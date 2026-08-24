@@ -105,13 +105,37 @@ export interface Ad5xIfsMappingDraft {
   warnings: readonly string[]
 }
 
+export interface Ad5xIfsProviderLaunchPlan {
+  provider: string
+  command: string
+  parameters: Readonly<Record<string, string | number>>
+  missing_parameters: readonly string[]
+  blockers: readonly string[]
+  ready: boolean
+  execution_enabled: boolean
+}
+
+export interface Ad5xIfsLaunchGate {
+  candidate: boolean
+  write_enabled: boolean
+  preview_token: string
+  strict_policy: boolean
+  plan_status: string
+  blockers: readonly string[]
+  warnings: readonly string[]
+  provider_launch_plan: Ad5xIfsProviderLaunchPlan
+  mapping_source?: string
+  provider_preview_token?: string
+  draft_token?: string
+}
+
 export interface Ad5xIfsMappingDraftResult {
   ok: boolean
   error?: string
   mapping_draft?: Ad5xIfsMappingDraft
   provider_auto_assign?: Readonly<Record<string, unknown>>
   preprint_plan?: Ad5xIfsPreprintPlan
-  launch_gate?: Readonly<Record<string, unknown>>
+  launch_gate?: Ad5xIfsLaunchGate
   snapshot: Ad5xSnapshot
 }
 
@@ -481,6 +505,32 @@ export function isAd5xIfsJobPreviewResult (value: unknown): value is Ad5xIfsJobP
     isAd5xSnapshot(value.snapshot)
 }
 
+function isProviderLaunchPlan (value: unknown): value is Ad5xIfsProviderLaunchPlan {
+  if (!isRecord(value) || !isRecord(value.parameters)) return false
+  if (!Object.values(value.parameters).every(item => typeof item === 'string' || typeof item === 'number')) return false
+  return typeof value.provider === 'string' &&
+    typeof value.command === 'string' &&
+    isStringArray(value.missing_parameters) &&
+    isStringArray(value.blockers) &&
+    typeof value.ready === 'boolean' &&
+    typeof value.execution_enabled === 'boolean'
+}
+
+function isLaunchGate (value: unknown): value is Ad5xIfsLaunchGate {
+  if (!isRecord(value)) return false
+  return typeof value.candidate === 'boolean' &&
+    typeof value.write_enabled === 'boolean' &&
+    typeof value.preview_token === 'string' &&
+    typeof value.strict_policy === 'boolean' &&
+    typeof value.plan_status === 'string' &&
+    isStringArray(value.blockers) &&
+    isStringArray(value.warnings) &&
+    isProviderLaunchPlan(value.provider_launch_plan) &&
+    (value.mapping_source === undefined || typeof value.mapping_source === 'string') &&
+    (value.provider_preview_token === undefined || typeof value.provider_preview_token === 'string') &&
+    (value.draft_token === undefined || typeof value.draft_token === 'string')
+}
+
 function isMappingDraft (value: unknown): value is Ad5xIfsMappingDraft {
   return isRecord(value) &&
     typeof value.status === 'string' &&
@@ -506,7 +556,7 @@ export function isAd5xIfsMappingDraftResult (value: unknown): value is Ad5xIfsMa
   return isMappingDraft(value.mapping_draft) &&
     isRecord(value.provider_auto_assign) &&
     isAd5xIfsPreprintPlan(value.preprint_plan) &&
-    isRecord(value.launch_gate)
+    isLaunchGate(value.launch_gate)
 }
 
 function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {

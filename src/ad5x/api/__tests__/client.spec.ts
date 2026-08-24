@@ -217,7 +217,24 @@ describe('Ad5xApiClient', () => {
       },
       provider_auto_assign: {},
       preprint_plan: preprintPlan,
-      launch_gate: { candidate: true, write_enabled: false },
+      launch_gate: {
+        candidate: true,
+        write_enabled: false,
+        preview_token: 'a'.repeat(64),
+        strict_policy: true,
+        plan_status: 'ready',
+        blockers: ['launch_write_not_enabled'],
+        warnings: [],
+        provider_launch_plan: {
+          provider: 'zmod',
+          command: 'PRINT_ZCOLOR',
+          parameters: { FILENAME: 'demo.gcode', LEVELING: 1, ALLOWED_TOOL_COUNT: 1, T0: 2 },
+          missing_parameters: [],
+          blockers: [],
+          ready: true,
+          execution_enabled: false
+        }
+      },
       snapshot: sharedSnapshot()
     }
     const emit = vi.fn().mockResolvedValue(payload)
