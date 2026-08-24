@@ -181,7 +181,7 @@
         <ifs-equivalent-spool-card
           v-if="!ifsSuspended && showEquivalentSpool && ifsModule.equivalent_spool"
           :preview="ifsModule.equivalent_spool"
-          :compact="equivalentCompact"
+          :mode="viewMode"
         />
 
         <ifs-diagnostics-card
@@ -341,10 +341,8 @@ export default class Ad5xMaterials extends Vue {
 
   get showEquivalentSpool (): boolean {
     const preview = this.ifsModule?.equivalent_spool
-    return Boolean(preview && (this.viewMode !== 'auto' || preview.status === 'available'))
+    return Boolean(preview)
   }
-
-  get equivalentCompact (): boolean { return this.viewMode !== 'expert' }
 
   get showPreprintPlan (): boolean {
     const plan = this.ifsModule?.preprint_plan
