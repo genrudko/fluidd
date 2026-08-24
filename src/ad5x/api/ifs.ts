@@ -294,6 +294,29 @@ export interface Ad5xIfsSpoolmanStatus {
   error: string
 }
 
+export interface Ad5xIfsEquivalentSpoolCandidate {
+  slot: number
+  present: boolean
+  material: string
+  color: string
+  eligible: boolean
+  blockers: readonly string[]
+}
+
+export interface Ad5xIfsEquivalentSpoolPreview {
+  provider: string
+  provider_command: string
+  automatic_transition_enabled: boolean
+  transition_hardware_accepted: boolean
+  source_slot: number
+  source?: Readonly<Record<string, unknown>>
+  candidates: readonly Ad5xIfsEquivalentSpoolCandidate[]
+  eligible_slots: readonly number[]
+  next_slot: number
+  status: string
+  reason: string
+}
+
 export interface Ad5xIfsModule {
   available?: boolean
   state: string
@@ -308,6 +331,7 @@ export interface Ad5xIfsModule {
   job_preview?: Ad5xIfsJobPreview
   provider_mode?: string
   maintenance_suspended?: boolean
+  equivalent_spool?: Ad5xIfsEquivalentSpoolPreview
   provider?: Ad5xIfsProviderState
   operations?: Ad5xIfsOperations
   spoolman?: Ad5xIfsSpoolmanStatus
@@ -640,6 +664,14 @@ function isIfsOperations (value: unknown): value is Ad5xIfsOperations {
     (value.prepare_job_launch === undefined || typeof value.prepare_job_launch === 'boolean')
 }
 
+function isEquivalentSpoolPreview (value: unknown): value is Ad5xIfsEquivalentSpoolPreview {
+  if (!isRecord(value) || typeof value.provider !== 'string' || typeof value.provider_command !== 'string') return false
+  if (typeof value.automatic_transition_enabled !== 'boolean' || typeof value.transition_hardware_accepted !== 'boolean') return false
+  if (!isInteger(value.source_slot) || !Array.isArray(value.candidates) || !Array.isArray(value.eligible_slots)) return false
+  if (!value.eligible_slots.every(isInteger) || !isInteger(value.next_slot) || typeof value.status !== 'string' || typeof value.reason !== 'string') return false
+  return value.candidates.every(candidate => isRecord(candidate) && isInteger(candidate.slot) && typeof candidate.present === 'boolean' && typeof candidate.material === 'string' && typeof candidate.color === 'string' && typeof candidate.eligible === 'boolean' && isStringArray(candidate.blockers))
+}
+
 export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (!isRecord(value)) return false
   if (typeof value.state !== 'string') return false
@@ -654,6 +686,7 @@ export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
   if (value.job_preview !== undefined && !isJobPreview(value.job_preview)) return false
   if (value.provider_mode !== undefined && typeof value.provider_mode !== 'string') return false
   if (value.maintenance_suspended !== undefined && typeof value.maintenance_suspended !== 'boolean') return false
+  if (value.equivalent_spool !== undefined && !isEquivalentSpoolPreview(value.equivalent_spool)) return false
   if (value.provider !== undefined && !isProviderState(value.provider)) return false
   if (value.operations !== undefined && !isIfsOperations(value.operations)) return false
   if (value.spoolman !== undefined && !isSpoolmanStatus(value.spoolman)) return false

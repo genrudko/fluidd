@@ -76,6 +76,18 @@ describe('AD5X IFS frontend contract', () => {
             messages: [],
             error: ''
           },
+          equivalent_spool: {
+            provider: 'zmod',
+            provider_command: 'ANALOG_PRUTOK',
+            automatic_transition_enabled: false,
+            transition_hardware_accepted: false,
+            source_slot: 1,
+            candidates: [{ slot: 2, present: true, material: 'PETG', color: '#112233', eligible: true, blockers: [] }],
+            eligible_slots: [2],
+            next_slot: 2,
+            status: 'available',
+            reason: ''
+          },
           spoolman: {
             configured: true,
             connected: true,
@@ -97,6 +109,7 @@ describe('AD5X IFS frontend contract', () => {
     expect(getIfsModule(snapshot)?.active_slot).toBe(1)
     expect(getIfsModule(snapshot)?.slots[0].spool.spoolman_spool_id).toBe(42)
     expect(getIfsModule(snapshot)?.preprint_plan.rows[0].assignment?.slot).toBe(1)
+    expect(getIfsModule(snapshot)?.equivalent_spool?.next_slot).toBe(2)
   })
 
   it('derives display color and remaining percentage from canonical metadata', () => {

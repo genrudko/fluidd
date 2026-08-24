@@ -176,6 +176,12 @@
           </v-col>
         </v-row>
 
+        <ifs-equivalent-spool-card
+          v-if="!ifsSuspended && showEquivalentSpool && ifsModule.equivalent_spool"
+          :preview="ifsModule.equivalent_spool"
+          :compact="equivalentCompact"
+        />
+
         <ifs-preprint-plan
           v-if="!ifsSuspended && showPreprintPlan"
           :plan="ifsModule.preprint_plan"
@@ -251,6 +257,7 @@ import { Ad5xApiClient, resolveAd5xSocketTransport } from '@/ad5x/api/client'
 import type { Ad5xIfsAction, Ad5xIfsJobPreview, Ad5xIfsLaunchGate, Ad5xIfsMetadataDraft, Ad5xIfsModule, Ad5xIfsPreprintPlan, Ad5xIfsSlot, Ad5xSpoolmanLibraryItem } from '@/ad5x/api/ifs'
 import { getIfsModule } from '@/ad5x/api/ifs'
 import IfsFilamentPath from '@/ad5x/components/IfsFilamentPath.vue'
+import IfsEquivalentSpoolCard from '@/ad5x/components/IfsEquivalentSpoolCard.vue'
 import IfsSlotCard from '@/ad5x/components/IfsSlotCard.vue'
 import IfsMetadataDialog from '@/ad5x/components/IfsMetadataDialog.vue'
 import IfsMappingDialog from '@/ad5x/components/IfsMappingDialog.vue'
@@ -263,7 +270,7 @@ import type { Ad5xState } from '@/ad5x/store/types'
 type IfsViewMode = 'auto' | 'hybrid' | 'expert'
 const IFS_VIEW_MODE_KEY = 'ad5x.ifs.viewMode'
 
-@Component({ components: { IfsFilamentPath, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
+@Component({ components: { IfsFilamentPath, IfsEquivalentSpoolCard, IfsSlotCard, IfsMetadataDialog, IfsMappingDialog, IfsPreprintPlan, IfsSpoolmanDialog } })
 export default class Ad5xMaterials extends Vue {
   refreshing = false
   actionInFlight: { action: Ad5xIfsAction; slot: number } | null = null
@@ -289,6 +296,13 @@ export default class Ad5xMaterials extends Vue {
   mappingDraftToken = ''
   mappingPrepared = false
   viewMode: IfsViewMode = 'hybrid'
+
+  get showEquivalentSpool (): boolean {
+    const preview = this.ifsModule?.equivalent_spool
+    return Boolean(preview && (this.viewMode !== 'auto' || preview.status === 'available'))
+  }
+
+  get equivalentCompact (): boolean { return this.viewMode !== 'expert' }
 
   get showPreprintPlan (): boolean {
     const plan = this.ifsModule?.preprint_plan
