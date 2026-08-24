@@ -13,6 +13,7 @@ import type {
   Ad5xIfsAppearance,
   Ad5xIfsMetadataResult,
   Ad5xIfsJobPreviewResult,
+  Ad5xIfsLaunchPrepareResult,
   Ad5xIfsMappingDraftResult,
   Ad5xIfsSpool,
   Ad5xSpoolmanLibraryResult,
@@ -21,6 +22,7 @@ import type {
 import {
   isAd5xIfsActionResult,
   isAd5xIfsJobPreviewResult,
+  isAd5xIfsLaunchPrepareResult,
   isAd5xIfsMappingDraftResult,
   isAd5xIfsMetadataResult,
   isAd5xSpoolmanLibraryResult,
@@ -38,6 +40,7 @@ const IFS_ACTION_METHOD = 'server.plugins_ad5x.ifs.action'
 const IFS_METADATA_METHOD = 'server.plugins_ad5x.ifs.metadata'
 const IFS_JOB_PREVIEW_METHOD = 'server.plugins_ad5x.ifs.job.preview'
 const IFS_MAPPING_DRAFT_METHOD = 'server.plugins_ad5x.ifs.job.mapping.draft'
+const IFS_LAUNCH_PREPARE_METHOD = 'server.plugins_ad5x.ifs.job.launch.prepare'
 const IFS_SPOOLMAN_LIBRARY_METHOD = 'server.plugins_ad5x.ifs.spoolman.library'
 const IFS_SPOOLMAN_BIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.bind'
 const IFS_SPOOLMAN_UNBIND_METHOD = 'server.plugins_ad5x.ifs.spoolman.unbind'
@@ -124,6 +127,20 @@ export class Ad5xApiClient implements Ad5xApi, Ad5xZCalibrationApi {
     if (!isAd5xIfsMappingDraftResult(response)) {
       throw new Error('IFS mapping draft response is incompatible with API 1.0')
     }
+    return response
+  }
+
+  async prepareIfsJobLaunch (filename: string, previewToken: string, draftToken: string, resolvedToolMap: readonly number[], leveling: 0 | 1): Promise<Ad5xIfsLaunchPrepareResult> {
+    const normalized = filename.trim()
+    const preview = previewToken.trim()
+    const draft = draftToken.trim()
+    if (!normalized) throw new Error('IFS launch prepare filename is required')
+    if (!/^[0-9a-f]{64}$/i.test(preview)) throw new Error('Invalid IFS preview token')
+    if (!/^[0-9a-f]{64}$/i.test(draft)) throw new Error('Invalid IFS draft token')
+    if (!resolvedToolMap.length || !resolvedToolMap.every(slot => Number.isInteger(slot) && slot >= 1 && slot <= 4)) throw new Error('Invalid IFS resolved tool map')
+    if (leveling !== 0 && leveling !== 1) throw new Error('Invalid IFS leveling mode')
+    const response = await this.socket.emit(IFS_LAUNCH_PREPARE_METHOD, { params: { filename: normalized, preview_token: preview, draft_token: draft, resolved_tool_map: [...resolvedToolMap], leveling } })
+    if (!isAd5xIfsLaunchPrepareResult(response)) throw new Error('IFS launch prepare response is incompatible with API 1.0')
     return response
   }
 

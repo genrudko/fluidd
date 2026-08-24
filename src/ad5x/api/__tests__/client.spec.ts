@@ -251,6 +251,21 @@ describe('Ad5xApiClient', () => {
     expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.mapping.draft', {
       params: { preview_token: 'a'.repeat(64), resolved_tool_map: [2], leveling: 1 }
     })
+
+    const preparePayload = {
+      ok: true,
+      revalidated: true,
+      filename: 'demo.gcode',
+      mapping_draft: payload.mapping_draft,
+      preprint_plan: preprintPlan,
+      launch_gate: payload.launch_gate,
+      snapshot: sharedSnapshot()
+    }
+    emit.mockReset().mockResolvedValue(preparePayload)
+    await expect(client.prepareIfsJobLaunch(' demo.gcode ', 'a'.repeat(64), 'b'.repeat(64), [2], 1)).resolves.toEqual(preparePayload)
+    expect(emit).toHaveBeenCalledWith('server.plugins_ad5x.ifs.job.launch.prepare', {
+      params: { filename: 'demo.gcode', preview_token: 'a'.repeat(64), draft_token: 'b'.repeat(64), resolved_tool_map: [2], leveling: 1 }
+    })
   })
 
   it('rejects invalid IFS preview tokens and mappings before touching the socket', async () => {
@@ -261,6 +276,10 @@ describe('Ad5xApiClient', () => {
     await expect(client.draftIfsJobMapping('bad-token', [1])).rejects.toThrow('Invalid IFS preview token')
     await expect(client.draftIfsJobMapping('a'.repeat(64), [0])).rejects.toThrow('Invalid IFS resolved tool map')
     await expect(client.draftIfsJobMapping('a'.repeat(64), [1], 2 as any)).rejects.toThrow('Invalid IFS leveling mode')
+    await expect(client.prepareIfsJobLaunch('   ', 'a'.repeat(64), 'b'.repeat(64), [1], 1)).rejects.toThrow('IFS launch prepare filename is required')
+    await expect(client.prepareIfsJobLaunch('demo.gcode', 'a'.repeat(64), 'bad-token', [1], 1)).rejects.toThrow('Invalid IFS draft token')
+    await expect(client.prepareIfsJobLaunch('demo.gcode', 'a'.repeat(64), 'b'.repeat(64), [0], 1)).rejects.toThrow('Invalid IFS resolved tool map')
+    await expect(client.prepareIfsJobLaunch('demo.gcode', 'a'.repeat(64), 'b'.repeat(64), [1], 2 as any)).rejects.toThrow('Invalid IFS leveling mode')
     expect(emit).not.toHaveBeenCalled()
   })
 

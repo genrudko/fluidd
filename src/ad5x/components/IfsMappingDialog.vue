@@ -166,6 +166,14 @@
         <v-spacer />
         <v-btn
           text
+          :disabled="busy || !canPrepare"
+          data-test="mapping-prepare"
+          @click="prepareLaunch"
+        >
+          Финальная проверка
+        </v-btn>
+        <v-btn
+          text
           :disabled="busy"
           @click="$emit('input', false)"
         >
@@ -221,6 +229,12 @@ export default class IfsMappingDialog extends Vue {
   @Prop({ type: Object, default: null })
   readonly launchGate!: Ad5xIfsLaunchGate | null
 
+  @Prop({ type: String, default: '' })
+  readonly draftToken!: string
+
+  @Prop({ type: Boolean, default: false })
+  readonly prepared!: boolean
+
   mapping: number[] = []
   automaticMapping: number[] = []
   leveling: 0 | 1 | null = null
@@ -242,6 +256,7 @@ export default class IfsMappingDialog extends Vue {
     if (this.launchGate.candidate && providerPlan.ready) {
       const acceptance = this.launchGate.hardware_acceptance
       if (acceptance.required && !acceptance.accepted) {
+        if (this.prepared) return 'Финальная проверка пройдена: файл, T→slot и live IFS состояние перепроверены. Реальный запуск всё ещё заблокирован до exact-SHA аппаратной приёмки.'
         return 'План PRINT_ZCOLOR структурно готов. Реальный запуск заблокирован до exact-SHA аппаратной приёмки.'
       }
       return 'План PRINT_ZCOLOR структурно готов. Реальный запуск остаётся отключён.'
@@ -253,6 +268,10 @@ export default class IfsMappingDialog extends Vue {
     return blockers.length
       ? `Backend заблокировал dry-run: ${blockers.join(', ')}`
       : 'План Z-Mod пока не готов к dry-run.'
+  }
+
+  get canPrepare (): boolean {
+    return Boolean(this.preview && this.previewToken && this.draftToken && this.mapping.length === this.preview.allowed_tool_count && (this.leveling === 0 || this.leveling === 1))
   }
 
   get canResetAutomatic (): boolean {
@@ -294,6 +313,11 @@ export default class IfsMappingDialog extends Vue {
 
   emitChange (): void {
     this.$emit('change', [...this.mapping], this.leveling)
+  }
+
+  prepareLaunch (): void {
+    if (!this.canPrepare || this.leveling === null) return
+    this.$emit('prepare', [...this.mapping], this.leveling)
   }
 
   resetToAutomatic (): void {

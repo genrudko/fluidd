@@ -197,7 +197,10 @@
           :error="mappingError"
           :provider-leveling="providerPrintLeveling"
           :launch-gate="mappingLaunchGate"
+          :draft-token="mappingDraftToken"
+          :prepared="mappingPrepared"
           @change="validateMappingDraft"
+          @prepare="prepareMappingLaunch"
         />
 
         <ifs-metadata-dialog
@@ -283,6 +286,8 @@ export default class Ad5xMaterials extends Vue {
   mappingPreviewToken = ''
   mappingPlan: Ad5xIfsPreprintPlan | null = null
   mappingLaunchGate: Ad5xIfsLaunchGate | null = null
+  mappingDraftToken = ''
+  mappingPrepared = false
   viewMode: IfsViewMode = 'hybrid'
 
   get showPreprintPlan (): boolean {
@@ -498,6 +503,8 @@ export default class Ad5xMaterials extends Vue {
     this.mappingBusy = true
     this.mappingError = ''
     this.mappingLaunchGate = null
+    this.mappingDraftToken = ''
+    this.mappingPrepared = false
     this.actionError = ''
     try {
       const result = await this.apiClient().previewIfsJob(filename)
@@ -522,6 +529,9 @@ export default class Ad5xMaterials extends Vue {
 
     this.mappingBusy = true
     this.mappingError = ''
+    this.mappingLaunchGate = null
+    this.mappingDraftToken = ''
+    this.mappingPrepared = false
     try {
       const result = await this.apiClient().draftIfsJobMapping(
         this.mappingPreviewToken,
@@ -534,6 +544,8 @@ export default class Ad5xMaterials extends Vue {
           this.mappingDialogOpen = false
           this.mappingPreviewToken = ''
           this.mappingLaunchGate = null
+          this.mappingDraftToken = ''
+          this.mappingPrepared = false
           this.actionError = 'Данные файла изменились. Откройте назначение IFS снова для свежего анализа.'
           return
         }
@@ -546,10 +558,44 @@ export default class Ad5xMaterials extends Vue {
       }
       this.mappingPlan = result.preprint_plan
       this.mappingLaunchGate = result.launch_gate ?? null
+      this.mappingDraftToken = result.mapping_draft.draft_token
+      this.mappingPrepared = false
       // Draft validation is intentionally stateless: its snapshot still carries
       // the provider plan, so applying it here would visually revert the manual map.
     } catch (error: unknown) {
       this.mappingError = error instanceof Error ? error.message : 'Не удалось проверить назначение IFS'
+    } finally {
+      this.mappingBusy = false
+    }
+  }
+
+  async prepareMappingLaunch (resolvedToolMap: readonly number[], leveling: 0 | 1): Promise<void> {
+    const filename = this.mappingPreview?.filename ?? ''
+    if (!filename || !this.mappingPreviewToken || !this.mappingDraftToken || this.mappingBusy) return
+    this.mappingBusy = true
+    this.mappingError = ''
+    this.mappingPrepared = false
+    try {
+      const result = await this.apiClient().prepareIfsJobLaunch(filename, this.mappingPreviewToken, this.mappingDraftToken, resolvedToolMap, leveling)
+      if (!result.ok || !result.mapping_draft || !result.preprint_plan || !result.launch_gate) {
+        const blockers = result.mapping_draft?.blockers ?? []
+        if (blockers.includes('stale_preview') || blockers.includes('stale_draft')) {
+          this.mappingDialogOpen = false
+          this.mappingPreviewToken = ''
+          this.mappingDraftToken = ''
+          this.mappingLaunchGate = null
+          this.actionError = 'Данные задания изменились. Откройте назначение IFS заново для свежей проверки.'
+          return
+        }
+        this.mappingError = result.error || 'Backend отклонил финальную проверку IFS'
+        return
+      }
+      this.mappingPlan = result.preprint_plan
+      this.mappingLaunchGate = result.launch_gate
+      this.mappingDraftToken = result.mapping_draft.draft_token
+      this.mappingPrepared = true
+    } catch (error: unknown) {
+      this.mappingError = error instanceof Error ? error.message : 'Не удалось выполнить финальную проверку IFS'
     } finally {
       this.mappingBusy = false
     }

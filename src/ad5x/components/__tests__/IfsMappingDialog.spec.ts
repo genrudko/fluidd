@@ -119,6 +119,18 @@ describe('IfsMappingDialog', () => {
     expect(vm.dryRunStatusText).toContain('assigned_slot_empty')
   })
 
+  it('emits a read-only final prepare only with a validated draft token and explicit leveling', async () => {
+    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), draftToken: 'b'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '', providerLeveling: 1, launchGate: launchGate(true), prepared: false } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    expect(vm.canPrepare).toBe(true)
+    vm.prepareLaunch()
+    expect(wrapper.emitted('prepare')?.[0]?.[0]).toEqual([1, 2, 3])
+    expect(wrapper.emitted('prepare')?.[0]?.[1]).toBe(1)
+    await wrapper.setProps({ prepared: true })
+    expect(vm.dryRunStatusText).toContain('Финальная проверка пройдена')
+  })
+
   it('preserves hidden tools when editing one visible T-to-slot assignment', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
       propsData: {

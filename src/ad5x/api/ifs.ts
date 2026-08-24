@@ -147,6 +147,17 @@ export interface Ad5xIfsMappingDraftResult {
   snapshot: Ad5xSnapshot
 }
 
+export interface Ad5xIfsLaunchPrepareResult {
+  ok: boolean
+  revalidated: boolean
+  filename?: string
+  error?: string
+  mapping_draft?: Ad5xIfsMappingDraft
+  preprint_plan?: Ad5xIfsPreprintPlan
+  launch_gate?: Ad5xIfsLaunchGate
+  snapshot: Ad5xSnapshot
+}
+
 export interface Ad5xIfsProviderSettings {
   print_leveling: 0 | 1 | null
   print_leveling_known: boolean
@@ -169,6 +180,7 @@ export interface Ad5xIfsOperations {
   unload_slot: boolean
   manage: boolean
   preview_job?: boolean
+  prepare_job_launch?: boolean
 }
 
 export interface Ad5xSpoolmanInventory {
@@ -576,6 +588,13 @@ export function isAd5xIfsMappingDraftResult (value: unknown): value is Ad5xIfsMa
     isLaunchGate(value.launch_gate)
 }
 
+export function isAd5xIfsLaunchPrepareResult (value: unknown): value is Ad5xIfsLaunchPrepareResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean' || typeof value.revalidated !== 'boolean' || !isAd5xSnapshot(value.snapshot)) return false
+  if (value.filename !== undefined && typeof value.filename !== 'string') return false
+  if (!value.ok) return typeof value.error === 'string' && (value.mapping_draft === undefined || isMappingDraft(value.mapping_draft))
+  return value.revalidated && typeof value.filename === 'string' && isMappingDraft(value.mapping_draft) && isAd5xIfsPreprintPlan(value.preprint_plan) && isLaunchGate(value.launch_gate)
+}
+
 function isSpoolmanStatus (value: unknown): value is Ad5xIfsSpoolmanStatus {
   if (!isRecord(value)) return false
 
@@ -617,7 +636,8 @@ function isIfsOperations (value: unknown): value is Ad5xIfsOperations {
     typeof value.load_slot === 'boolean' &&
     typeof value.unload_slot === 'boolean' &&
     typeof value.manage === 'boolean' &&
-    (value.preview_job === undefined || typeof value.preview_job === 'boolean')
+    (value.preview_job === undefined || typeof value.preview_job === 'boolean') &&
+    (value.prepare_job_launch === undefined || typeof value.prepare_job_launch === 'boolean')
 }
 
 export function isAd5xIfsModule (value: unknown): value is Ad5xIfsModule {
