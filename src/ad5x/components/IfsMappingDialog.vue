@@ -109,7 +109,15 @@
       </v-card-text>
 
       <v-card-actions>
-        <span class="text-caption text--secondary">
+        <v-btn
+          text
+          :disabled="busy || !canResetAutomatic"
+          data-test="mapping-reset-auto"
+          @click="resetToAutomatic"
+        >
+          Сбросить к авто
+        </v-btn>
+        <span class="text-caption text--secondary ml-2">
           Источник анализа: Z-Mod · применение карты отключено
         </span>
         <v-spacer />
@@ -164,6 +172,12 @@ export default class IfsMappingDialog extends Vue {
   readonly error!: string
 
   mapping: number[] = []
+  automaticMapping: number[] = []
+
+  get canResetAutomatic (): boolean {
+    return this.mapping.length === this.automaticMapping.length &&
+      this.mapping.some((slot, index) => slot !== this.automaticMapping[index])
+  }
 
   get slotItems (): SlotItem[] {
     return [1, 2, 3, 4].map(slotNumber => {
@@ -186,7 +200,15 @@ export default class IfsMappingDialog extends Vue {
   }
 
   resetMapping (): void {
-    this.mapping = this.preview ? [...this.preview.resolved_tool_map] : []
+    const mapping = this.preview ? [...this.preview.resolved_tool_map] : []
+    this.automaticMapping = [...mapping]
+    this.mapping = mapping
+  }
+
+  resetToAutomatic (): void {
+    if (!this.canResetAutomatic) return
+    this.mapping = [...this.automaticMapping]
+    this.$emit('change', [...this.mapping])
   }
 
   selectedSlot (tool: number): number | null {

@@ -112,6 +112,19 @@ describe('IfsMappingDialog', () => {
     expect(vm.slotItems.find((item: any) => item.value === 4).text).toContain('недоступен')
   })
 
+  it('restores the original automatic proposal after a manual draft edit', () => {
+    const wrapper = shallowMount(IfsMappingDialog, { propsData: { value: true, preview: preview(), previewToken: 'a'.repeat(64), plan: plan(), slots: [slot(1), slot(2), slot(3), slot(4)], busy: false, error: '' } })
+    const vm = wrapper.vm as any
+    vm.resetMapping()
+    vm.updateSlot(0, 2)
+    expect(vm.canResetAutomatic).toBe(true)
+    vm.resetToAutomatic()
+    expect(vm.mapping).toEqual([1, 2, 3])
+    const changes = wrapper.emitted('change') || []
+    expect(changes[changes.length - 1]?.[0]).toEqual([1, 2, 3])
+    expect(vm.canResetAutomatic).toBe(false)
+  })
+
   it('ignores invalid slot edits', () => {
     const wrapper = shallowMount(IfsMappingDialog, {
       propsData: {
