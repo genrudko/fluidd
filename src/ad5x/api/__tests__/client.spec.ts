@@ -87,6 +87,60 @@ function zSnapshot () {
   }
 }
 
+function zV6Snapshot () {
+  const base = zSnapshot()
+  const machineAnchor = {
+    model: 'transient_mesh_anchor_v6',
+    policy_id: 'adz-runtime-mesh-anchor-v6-20260825',
+    policy_loaded: true,
+    runtime_available: true,
+    active: true,
+    finalized: true,
+    shift: 0.1375,
+    measured_delta: 0.1375,
+    persistent: false,
+    base_profile: 'auto',
+    runtime_profile: 'adz_runtime_anchor',
+    point_count: 25,
+    status: 'active',
+    offset_component: false
+  }
+
+  return {
+    ...base,
+    module_version: '0.1.5',
+    module: {
+      ...base.module,
+      schema_version: '1.2',
+      capabilities: [...base.module.capabilities, 'transient_machine_anchor_provenance'],
+      state: {
+        ...base.module.state,
+        machine_anchor: machineAnchor,
+        offset: {
+          ...base.module.state.offset,
+          persistent_user: -0.091,
+          auto_alignment: 0,
+          known_total: -0.091,
+          effective: -0.091,
+          provenance_status: 'reconciled'
+        },
+        provenance: {
+          ...base.module.state.provenance,
+          status: 'reconciled',
+          actual_effective: -0.091,
+          reported_homing_origin_z: -0.091,
+          machine_anchor: machineAnchor
+        },
+        runtime: {
+          ...base.module.state.runtime,
+          homed_axes: 'xyz',
+          effective_valid: true
+        }
+      }
+    }
+  }
+}
+
 describe('Ad5xApiClient', () => {
   it('resolves the Fluidd runtime socket without relying on Vue type augmentation', () => {
     const emit = vi.fn()
@@ -404,6 +458,40 @@ describe('Ad5xApiClient', () => {
     })
 
     await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
+  })
+
+  it('accepts schema 1.2 with a separate transient machine anchor', async () => {
+    const payload = zV6Snapshot()
+    const client = new Ad5xApiClient({
+      emit: vi.fn().mockResolvedValue(payload)
+    })
+
+    await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
+  })
+
+  it('rejects a v6 capability snapshot when machine-anchor state is missing', async () => {
+    const payload = zV6Snapshot()
+    delete (payload.module.state as { machine_anchor?: unknown }).machine_anchor
+    delete (payload.module.state.provenance as { machine_anchor?: unknown }).machine_anchor
+    const client = new Ad5xApiClient({
+      emit: vi.fn().mockResolvedValue(payload)
+    })
+
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
+    )
+  })
+
+  it('rejects schema 1.2 when machine-anchor runtime data is malformed', async () => {
+    const payload = zV6Snapshot()
+    payload.module.state.machine_anchor.shift = Number.NaN
+    const client = new Ad5xApiClient({
+      emit: vi.fn().mockResolvedValue(payload)
+    })
+
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
+    )
   })
 
   it('rejects a standalone snapshot from a different API contract', async () => {

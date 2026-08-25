@@ -5,7 +5,7 @@ import ZCalibrationMeshPreview from '../ZCalibrationMeshPreview.vue'
 const localVue = createLocalVue()
 localVue.use(Vuex)
 
-function createStore (withRuntime = true) {
+function createStore (withRuntime = true, v6Runtime = false) {
   return new Vuex.Store({
     modules: {
       printer: {
@@ -13,7 +13,7 @@ function createStore (withRuntime = true) {
         state: {
           printer: {
             bed_mesh: {
-              profile_name: 'auto',
+              profile_name: v6Runtime ? 'adz_runtime_anchor' : 'auto',
               profiles: {
                 auto: {
                   points: [
@@ -88,6 +88,28 @@ describe('ZCalibrationMeshPreview', () => {
     expect(vm.meshRange).toBeCloseTo(0.12)
     expect(vm.meshCells).toHaveLength(4)
     expect(wrapper.find('[data-test="z-runtime-mesh-note"]').exists()).toBe(true)
+  })
+
+  it('uses the current in-memory bed mesh for the v6 transient anchor without inventing a saved profile', () => {
+    const wrapper = shallowMount(ZCalibrationMeshPreview, {
+      localVue,
+      store: createStore(false, true),
+      mocks: {
+        $router: { push: vi.fn().mockResolvedValue(undefined) }
+      }
+    })
+    const vm = wrapper.vm as any
+
+    expect(vm.v6RuntimeActive).toBe(true)
+    expect(vm.effectiveViewMode).toBe('runtime')
+    expect(vm.displayProfileLabel).toContain('adz_runtime_anchor')
+    expect(vm.meshMin).toBe(-0.02)
+    expect(vm.meshMax).toBe(0.03)
+    expect(vm.meshRange).toBeCloseTo(0.05)
+    expect(vm.meshCells).toHaveLength(4)
+    expect(wrapper.find('[data-test="z-mesh-view-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="z-runtime-mesh-note"]').text()).toContain('только в памяти')
+    expect(wrapper.find('[data-test="z-runtime-mesh-note"]').text()).toContain('не сохраняется поверх `auto`')
   })
 
   it('falls back to the active mesh when no temporary profile exists', () => {

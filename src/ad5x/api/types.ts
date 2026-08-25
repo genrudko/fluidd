@@ -16,6 +16,23 @@ export interface Ad5xZCalibrationIntegration {
   hook_commands: readonly string[] | null
 }
 
+export interface Ad5xZCalibrationMachineAnchor {
+  model: string
+  policy_id?: string | null
+  policy_loaded?: boolean
+  runtime_available?: boolean
+  active: boolean
+  finalized: boolean
+  shift: number
+  measured_delta?: number | null
+  persistent?: boolean | null
+  base_profile?: string | null
+  runtime_profile?: string | null
+  point_count?: number
+  status: string
+  offset_component?: boolean
+}
+
 export interface Ad5xZCalibrationState {
   calibration: {
     state: string
@@ -36,6 +53,7 @@ export interface Ad5xZCalibrationState {
     effective: number | null
     provenance_status: string
   }
+  machine_anchor?: Ad5xZCalibrationMachineAnchor
   provenance: {
     status: string
     model: string
@@ -46,6 +64,7 @@ export interface Ad5xZCalibrationState {
     requested_slicer_z_offset: number | null
     slicer_z_offset_effect: string
     rc_path: Readonly<Record<string, unknown>>
+    machine_anchor?: Ad5xZCalibrationMachineAnchor
   }
   job: {
     phase: string
@@ -140,6 +159,23 @@ function isNullableStringArray (value: unknown): value is string[] | null {
   return value === null || isStringArray(value)
 }
 
+function isAd5xZCalibrationMachineAnchor (value: unknown): value is Ad5xZCalibrationMachineAnchor {
+  if (!isRecord(value)) return false
+  if (typeof value.model !== 'string' || value.model.length === 0) return false
+  if (typeof value.active !== 'boolean' || typeof value.finalized !== 'boolean') return false
+  if (!isFiniteNumber(value.shift) || typeof value.status !== 'string') return false
+  if (!(value.policy_id === undefined || value.policy_id === null || typeof value.policy_id === 'string')) return false
+  if (!(value.policy_loaded === undefined || typeof value.policy_loaded === 'boolean')) return false
+  if (!(value.runtime_available === undefined || typeof value.runtime_available === 'boolean')) return false
+  if (!(value.measured_delta === undefined || isNullableFiniteNumber(value.measured_delta))) return false
+  if (!(value.persistent === undefined || value.persistent === null || typeof value.persistent === 'boolean')) return false
+  if (!(value.base_profile === undefined || value.base_profile === null || typeof value.base_profile === 'string')) return false
+  if (!(value.runtime_profile === undefined || value.runtime_profile === null || typeof value.runtime_profile === 'string')) return false
+  if (!(value.point_count === undefined || isFiniteNumber(value.point_count))) return false
+  if (!(value.offset_component === undefined || typeof value.offset_component === 'boolean')) return false
+  return true
+}
+
 export function isAd5xSnapshot (value: unknown): value is Ad5xSnapshot {
   if (!isRecord(value)) return false
   if (value.api_version !== '1.0') return false
@@ -164,7 +200,9 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
 
   const calibration = value.state.calibration
   const offset = value.state.offset
+  const machineAnchor = value.state.machine_anchor
   const provenance = value.state.provenance
+  const requiresMachineAnchor = value.capabilities.includes('transient_machine_anchor_provenance')
   const job = value.state.job
   const runtime = value.state.runtime
   const safety = value.state.safety
@@ -191,6 +229,9 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
       !isNullableFiniteNumber(offset.effective) ||
       typeof offset.provenance_status !== 'string') return false
 
+  if (requiresMachineAnchor && !isAd5xZCalibrationMachineAnchor(machineAnchor)) return false
+  if (!(machineAnchor === undefined || isAd5xZCalibrationMachineAnchor(machineAnchor))) return false
+
   if (!isRecord(provenance) ||
       typeof provenance.status !== 'string' ||
       typeof provenance.model !== 'string' ||
@@ -201,7 +242,9 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
       !(provenance.reported_homing_origin_z === undefined || isNullableFiniteNumber(provenance.reported_homing_origin_z)) ||
       !isNullableFiniteNumber(provenance.requested_slicer_z_offset) ||
       typeof provenance.slicer_z_offset_effect !== 'string' ||
-      !isRecord(provenance.rc_path)) return false
+      !isRecord(provenance.rc_path) ||
+      !(provenance.machine_anchor === undefined || isAd5xZCalibrationMachineAnchor(provenance.machine_anchor)) ||
+      (requiresMachineAnchor && !isAd5xZCalibrationMachineAnchor(provenance.machine_anchor))) return false
 
   if (!isRecord(job) ||
       typeof job.phase !== 'string' ||

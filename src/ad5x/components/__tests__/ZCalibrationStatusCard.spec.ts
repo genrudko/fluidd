@@ -78,6 +78,53 @@ function snapshot (): Ad5xZCalibrationSnapshot {
   }
 }
 
+function v6Snapshot (): Ad5xZCalibrationSnapshot {
+  const payload = snapshot()
+  const machineAnchor = {
+    model: 'transient_mesh_anchor_v6',
+    policy_id: 'adz-runtime-mesh-anchor-v6-20260825',
+    policy_loaded: true,
+    runtime_available: true,
+    active: true,
+    finalized: true,
+    shift: 0.1375,
+    measured_delta: 0.1375,
+    persistent: false,
+    base_profile: 'auto',
+    runtime_profile: 'adz_runtime_anchor',
+    point_count: 25,
+    status: 'active',
+    offset_component: false
+  }
+
+  payload.module_version = '0.1.5'
+  payload.module.schema_version = '1.2'
+  payload.module.capabilities = [...payload.module.capabilities, 'transient_machine_anchor_provenance']
+  payload.module.state.offset = {
+    ...payload.module.state.offset,
+    auto_alignment: 0,
+    persistent_user: -0.091,
+    known_total: -0.091,
+    effective: -0.091,
+    provenance_status: 'reconciled'
+  }
+  payload.module.state.machine_anchor = machineAnchor
+  payload.module.state.provenance = {
+    ...payload.module.state.provenance,
+    status: 'reconciled',
+    actual_effective: -0.091,
+    reported_homing_origin_z: -0.091,
+    machine_anchor: machineAnchor
+  }
+  payload.module.state.runtime = {
+    ...payload.module.state.runtime,
+    print_state: 'printing',
+    homed_axes: 'xyz',
+    effective_valid: true
+  }
+  return payload
+}
+
 describe('ZCalibrationStatusCard', () => {
   it('renders an unhomed standby state without claiming a false effective Z', () => {
     const wrapper = shallowMount(ZCalibrationStatusCard, {
@@ -90,12 +137,70 @@ describe('ZCalibrationStatusCard', () => {
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('Система Z-калибровки готова')
     expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('после homing Z')
     expect(wrapper.find('[data-test="z-effective-offset"]').text()).toBe('—')
-    expect(wrapper.find('[data-test="z-auto-alignment"]').text()).toBe('0.000 mm')
+    expect(wrapper.find('[data-test="z-machine-anchor"]').text()).toBe('0.000 mm')
     expect(wrapper.find('[data-test="z-persistent-user"]').text()).toBe('-0.016 mm')
     expect(wrapper.find('[data-test="z-klippy-state"]').text()).toContain('homing Z не выполнен')
     expect(wrapper.find('[data-test="z-preprint-state"]').text()).toBe('включена · saved mesh + Z-check')
     expect(wrapper.find('[data-test="z-provenance"]').text()).toBe('станет доступен после homing Z')
     expect(wrapper.find('[data-test="external-unknown-warning"]').exists()).toBe(false)
+  })
+
+  it('keeps v6 user Z separate from the transient machine anchor', () => {
+    const wrapper = shallowMount(ZCalibrationStatusCard, {
+      propsData: { snapshot: v6Snapshot() }
+    })
+
+    expect(wrapper.find('[data-test="z-effective-offset"]').text()).toBe('-0.091 mm')
+    expect(wrapper.find('[data-test="z-machine-anchor"]').text()).toBe('+0.138 mm')
+    expect(wrapper.find('[data-test="z-persistent-user"]').text()).toBe('-0.091 mm')
+    expect(wrapper.find('[data-test="z-machine-anchor-status"]').text()).toBe('active')
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('Система Z-калибровки готова')
+    expect(wrapper.text()).toContain('не пользовательский Z-offset')
+    expect(wrapper.text()).toContain('Реальный пользовательский Z-offset Klipper')
+  })
+
+  it('shows v6 pending transfer as progress rather than an unexplained offset', () => {
+    const payload = v6Snapshot()
+    payload.module.state.machine_anchor = {
+      ...payload.module.state.machine_anchor!,
+      active: false,
+      finalized: false,
+      shift: 0,
+      status: 'pending_transfer'
+    }
+    payload.module.state.provenance.machine_anchor = payload.module.state.machine_anchor
+    payload.module.state.provenance.status = 'machine_anchor_pending'
+    payload.module.state.offset.provenance_status = 'machine_anchor_pending'
+    payload.module.state.provenance.reported_homing_origin_z = 0.0465
+
+    const wrapper = shallowMount(ZCalibrationStatusCard, {
+      propsData: { snapshot: payload }
+    })
+
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('Auto-Z выполняется')
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('runtime mesh')
+    expect(wrapper.find('[data-test="z-machine-anchor"]').text()).toBe('+0.138 mm')
+    expect(wrapper.find('[data-test="external-unknown-warning"]').exists()).toBe(false)
+  })
+
+  it('requires attention when v6 machine-anchor state is inconsistent', () => {
+    const payload = v6Snapshot()
+    payload.module.state.machine_anchor = {
+      ...payload.module.state.machine_anchor!,
+      shift: 0.13,
+      status: 'shift_mismatch'
+    }
+    payload.module.state.provenance.machine_anchor = payload.module.state.machine_anchor
+    payload.module.state.provenance.status = 'machine_anchor_shift_mismatch'
+    payload.module.state.offset.provenance_status = 'machine_anchor_shift_mismatch'
+
+    const wrapper = shallowMount(ZCalibrationStatusCard, {
+      propsData: { snapshot: payload }
+    })
+
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('требует внимания')
+    expect(wrapper.find('[data-test="z-ready-state"]').text()).toContain('machine anchor=shift_mismatch')
+    expect(wrapper.find('[data-test="z-provenance"]').text()).toContain('не совпадают')
   })
 
   it('surfaces a real unexplained residual only when the effective Z is valid', () => {

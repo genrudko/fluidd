@@ -23,7 +23,7 @@
 
       <v-alert
         data-test="z-ready-state"
-        :type="ready ? 'success' : 'warning'"
+        :type="readyAlertType"
         text
       >
         <strong>{{ readyTitle }}</strong>
@@ -62,7 +62,7 @@
             outlined
           >
             <v-card-subtitle class="pb-1">
-              Итоговый Z-offset
+              Текущий Z-offset
             </v-card-subtitle>
             <v-card-text class="pt-1">
               <div
@@ -87,17 +87,17 @@
             outlined
           >
             <v-card-subtitle class="pb-1">
-              Auto-Z поправка
+              {{ machineAnchorTitle }}
             </v-card-subtitle>
             <v-card-text class="pt-1">
               <div
                 class="text-h5"
-                data-test="z-auto-alignment"
+                data-test="z-machine-anchor"
               >
-                {{ formatMm(module.state.offset.auto_alignment) }}
+                {{ formatMm(machineAnchorValue) }}
               </div>
               <div class="text-caption text--secondary">
-                Значение Z-Mod, только для наблюдения
+                {{ machineAnchorCaption }}
               </div>
             </v-card-text>
           </v-card>
@@ -216,6 +216,20 @@
                   <th>Raw homing_origin.z</th>
                   <td>{{ formatNullableMm(reportedHomingOriginZ) }}</td>
                 </tr>
+                <tr v-if="machineAnchor">
+                  <th>Machine anchor status</th>
+                  <td data-test="z-machine-anchor-status">
+                    {{ machineAnchorStatus }}
+                  </td>
+                </tr>
+                <tr v-if="machineAnchor">
+                  <th>Machine anchor shift</th>
+                  <td>{{ formatMm(machineAnchorValue) }}</td>
+                </tr>
+                <tr v-if="machineAnchor && machineAnchor.measured_delta !== undefined">
+                  <th>Measured native delta</th>
+                  <td>{{ formatNullableMm(machineAnchor.measured_delta ?? null) }}</td>
+                </tr>
                 <tr>
                   <th>Known total</th>
                   <td>{{ formatMm(module.state.offset.known_total) }}</td>
@@ -262,7 +276,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Component, Prop } from 'vue-property-decorator'
-import type { Ad5xZCalibrationSnapshot } from '@/ad5x/api/types'
+import type { Ad5xZCalibrationMachineAnchor, Ad5xZCalibrationSnapshot } from '@/ad5x/api/types'
 import ZCalibrationActions from '@/ad5x/components/ZCalibrationActions.vue'
 import ZCalibrationMeshPreview from '@/ad5x/components/ZCalibrationMeshPreview.vue'
 
@@ -291,6 +305,47 @@ export default class ZCalibrationStatusCard extends Vue {
     return this.module.state.provenance.reported_homing_origin_z ?? null
   }
 
+  get machineAnchor (): Ad5xZCalibrationMachineAnchor | null {
+    return this.module.state.machine_anchor ??
+      this.module.state.provenance.machine_anchor ??
+      null
+  }
+
+  get isV6MachineAnchor (): boolean {
+    return this.module.capabilities.includes('transient_machine_anchor_provenance') ||
+      this.machineAnchor?.offset_component === false
+  }
+
+  get machineAnchorValue (): number {
+    if (this.machineAnchorPending && this.machineAnchor?.measured_delta !== undefined && this.machineAnchor.measured_delta !== null) {
+      return this.machineAnchor.measured_delta
+    }
+    return this.machineAnchor?.shift ?? this.module.state.offset.auto_alignment
+  }
+
+  get machineAnchorTitle (): string {
+    return this.isV6MachineAnchor ? 'Привязка Auto-Z' : 'Auto-Z поправка'
+  }
+
+  get machineAnchorCaption (): string {
+    if (!this.isV6MachineAnchor) return 'Значение Z-Mod, только для наблюдения'
+    if (this.machineAnchorPending) return 'Измерено; перенос в runtime mesh ещё выполняется. Пользовательский Z-offset не изменяется'
+    return 'Служебный machine anchor: сдвиг runtime mesh, не пользовательский Z-offset'
+  }
+
+  get machineAnchorStatus (): string {
+    return this.machineAnchor?.status ?? 'legacy_gcode_offset'
+  }
+
+  get machineAnchorPending (): boolean {
+    return this.isV6MachineAnchor && this.machineAnchorStatus === 'pending_transfer'
+  }
+
+  get machineAnchorRequiresAttention (): boolean {
+    if (!this.isV6MachineAnchor) return false
+    return !['active', 'idle', 'pending_transfer'].includes(this.machineAnchorStatus)
+  }
+
   get preprintMode (): number | null {
     const value = this.module.state.provenance.rc_path?.mesh_test
     return typeof value === 'number' ? value : null
@@ -313,16 +368,27 @@ export default class ZCalibrationStatusCard extends Vue {
       calibration.offset_write_enabled === false &&
       calibration.offset_hook_status === 'loaded' &&
       calibration.integration.policy_status === 'loaded' &&
-      this.module.state.safety.fail_closed
+      this.module.state.safety.fail_closed &&
+      !this.machineAnchorRequiresAttention
+  }
+
+  get readyAlertType (): 'success' | 'info' | 'warning' {
+    if (this.machineAnchorPending) return 'info'
+    return this.ready ? 'success' : 'warning'
   }
 
   get readyTitle (): string {
+    if (this.machineAnchorPending) return 'Auto-Z выполняется'
     return this.ready
       ? 'Система Z-калибровки готова'
       : 'Система Z-калибровки требует внимания'
   }
 
   get readinessMessage (): string {
+    if (this.machineAnchorPending) {
+      return 'Точная точка Auto-Z уже снята; служебная привязка переносится в runtime mesh. Пользовательский Z-offset не изменяется.'
+    }
+
     if (this.ready && this.preprintMode === 0) {
       return 'Защитный контур активен. Автоматическая Z-калибровка перед печатью выключена пользователем.'
     }
@@ -346,6 +412,7 @@ export default class ZCalibrationStatusCard extends Vue {
     if (calibration.offset_hook_status !== 'loaded') problems.push(`hook=${calibration.offset_hook_status}`)
     if (calibration.integration.policy_status !== 'loaded') problems.push(`policy=${calibration.integration.policy_status}`)
     if (!this.module.state.safety.fail_closed) problems.push('fail-closed выключен')
+    if (this.machineAnchorRequiresAttention) problems.push(`machine anchor=${this.machineAnchorStatus}`)
 
     return problems.join('; ') || 'Backend не подтвердил безопасное состояние.'
   }
@@ -357,9 +424,10 @@ export default class ZCalibrationStatusCard extends Vue {
   }
 
   get effectiveCaption (): string {
-    return this.effectiveValid
-      ? 'Фактический итоговый offset Klipper'
-      : 'Появится после homing Z'
+    if (!this.effectiveValid) return 'Появится после homing Z'
+    return this.isV6MachineAnchor
+      ? 'Реальный пользовательский Z-offset Klipper; Auto-Z anchor хранится в mesh'
+      : 'Фактический итоговый offset Klipper'
   }
 
   get runtimeLabel (): string {
@@ -403,6 +471,12 @@ export default class ZCalibrationStatusCard extends Vue {
       reconciled: 'все известные составляющие согласованы',
       not_homed: 'станет доступен после homing Z',
       external_unknown: 'есть необъяснённая составляющая',
+      machine_anchor_pending: 'Auto-Z измерен; привязка runtime mesh завершается',
+      machine_anchor_runtime_unavailable: 'runtime machine anchor недоступен',
+      machine_anchor_runtime_malformed: 'runtime machine anchor повреждён',
+      machine_anchor_persistence_violation: 'machine anchor ошибочно помечен как persistent',
+      machine_anchor_state_mismatch: 'состояние machine anchor не согласовано',
+      machine_anchor_shift_mismatch: 'измеренный Auto-Z и machine anchor не совпадают',
       partial: 'данные доступны частично',
       unsupported_zmod_offset_path: 'текущий offset-путь Z-Mod не поддержан',
       unavailable: 'недоступно'

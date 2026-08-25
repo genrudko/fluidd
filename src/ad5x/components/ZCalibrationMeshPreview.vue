@@ -27,7 +27,7 @@
 
     <v-card-text v-if="supportsBedMesh">
       <v-btn-toggle
-        v-if="hasRuntimeProfile"
+        v-if="hasLegacyRuntimeProfile"
         v-model="viewMode"
         class="mb-3"
         data-test="z-mesh-view-toggle"
@@ -56,7 +56,7 @@
         text
         type="info"
       >
-        Показана последняя временная карта `ad5x_runtime`. Она не записана через SAVE_CONFIG; активной для печати остаётся проверенная `auto`.
+        {{ runtimeMeshNote }}
       </v-alert>
 
       <template v-if="hasMeshLoaded">
@@ -160,6 +160,7 @@ type RuntimeMeshProfile = {
 }
 
 type BedMeshRuntimeState = {
+  profile_name?: string
   profiles?: Record<string, RuntimeMeshProfile>
 }
 
@@ -191,6 +192,10 @@ export default class ZCalibrationMeshPreview extends Vue {
     return state.printer?.printer?.bed_mesh || null
   }
 
+  get v6RuntimeActive (): boolean {
+    return this.bedMeshState?.profile_name === 'adz_runtime_anchor'
+  }
+
   get runtimeProfile (): RuntimeMeshProfile | null {
     return this.bedMeshState?.profiles?.ad5x_runtime || null
   }
@@ -202,8 +207,13 @@ export default class ZCalibrationMeshPreview extends Vue {
       : []
   }
 
-  get hasRuntimeProfile (): boolean {
+  get hasLegacyRuntimeProfile (): boolean {
     return this.runtimePoints.length > 0
+  }
+
+  get hasRuntimeProfile (): boolean {
+    const v6MeshReady = this.v6RuntimeActive && Boolean(this.currentMesh?.coordinates?.length)
+    return v6MeshReady || this.hasLegacyRuntimeProfile
   }
 
   get effectiveViewMode (): 'runtime' | 'active' {
@@ -218,11 +228,17 @@ export default class ZCalibrationMeshPreview extends Vue {
   }
 
   get runtimeValues (): number[] {
+    if (this.v6RuntimeActive) {
+      return (this.currentMesh?.coordinates ?? [])
+        .map(point => Number(point.value[2]))
+        .filter(Number.isFinite)
+    }
     return this.runtimePoints.flat().map(Number).filter(Number.isFinite)
   }
 
   get meshMin (): number {
     if (this.effectiveViewMode === 'runtime') {
+      if (this.v6RuntimeActive) return this.currentMesh?.min ?? 0
       return this.runtimeValues.length > 0 ? Math.min(...this.runtimeValues) : 0
     }
     return this.currentMesh?.min ?? 0
@@ -230,12 +246,16 @@ export default class ZCalibrationMeshPreview extends Vue {
 
   get meshMax (): number {
     if (this.effectiveViewMode === 'runtime') {
+      if (this.v6RuntimeActive) return this.currentMesh?.max ?? 0
       return this.runtimeValues.length > 0 ? Math.max(...this.runtimeValues) : 0
     }
     return this.currentMesh?.max ?? 0
   }
 
   get meshRange (): number {
+    if (this.effectiveViewMode === 'runtime' && this.v6RuntimeActive) {
+      return this.currentMesh?.range ?? 0
+    }
     return this.effectiveViewMode === 'runtime'
       ? this.meshMax - this.meshMin
       : this.currentMesh?.range ?? 0
@@ -254,13 +274,20 @@ export default class ZCalibrationMeshPreview extends Vue {
   }
 
   get displayProfileLabel (): string {
-    return this.effectiveViewMode === 'runtime'
-      ? 'ad5x_runtime (временная)'
-      : this.activeProfileLabel
+    if (this.effectiveViewMode !== 'runtime') return this.activeProfileLabel
+    return this.v6RuntimeActive
+      ? 'adz_runtime_anchor (v6 transient)'
+      : 'ad5x_runtime (legacy temporary)'
+  }
+
+  get runtimeMeshNote (): string {
+    return this.v6RuntimeActive
+      ? 'Показана активная transient mesh `adz_runtime_anchor`: pristine-карта с текущей служебной Auto-Z привязкой. Она существует только в памяти и не сохраняется поверх `auto`.'
+      : 'Показана legacy-временная карта `ad5x_runtime`. Она не записана через SAVE_CONFIG; сохранённая `auto` остаётся отдельным профилем.'
   }
 
   get gridStyle (): Record<string, string> {
-    const columns = this.effectiveViewMode === 'runtime'
+    const columns = this.effectiveViewMode === 'runtime' && !this.v6RuntimeActive
       ? Math.max(1, this.runtimePoints[0]?.length ?? 1)
       : Math.max(1, this.currentMesh?.dimensions?.[0] ?? 1)
 
@@ -279,7 +306,7 @@ export default class ZCalibrationMeshPreview extends Vue {
   }
 
   get meshCells (): MeshCell[] {
-    if (this.effectiveViewMode === 'runtime') {
+    if (this.effectiveViewMode === 'runtime' && !this.v6RuntimeActive) {
       const cells: MeshCell[] = []
       this.runtimePoints.forEach((row, rowIndex) => {
         row.forEach((raw, columnIndex) => {
