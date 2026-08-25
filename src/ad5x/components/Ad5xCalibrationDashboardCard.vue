@@ -16,15 +16,6 @@
           $refresh
         </v-icon>
       </app-btn>
-      <app-btn
-        icon
-        data-test="ad5x-dashboard-open"
-        @click="$router.push({ name: 'ad5x' })"
-      >
-        <v-icon dense>
-          $fullScreen
-        </v-icon>
-      </app-btn>
     </template>
 
     <v-card-text class="pt-2">
@@ -175,16 +166,6 @@
               @change="setPurgeAlgorithm"
             />
           </div>
-
-          <app-btn
-            class="mb-2"
-            data-test="ad5x-dashboard-open-center"
-            outlined
-            small
-            @click="$router.push({ name: 'ad5x' })"
-          >
-            Подробнее
-          </app-btn>
         </div>
 
         <v-alert

@@ -237,7 +237,6 @@ app:
         modeAuto: "Auto"
         modeHybrid: "Hybrid"
         modeExpert: "Expert"
-        zCalibration: "Z Calibration"
         refresh: "Refresh"
         backendUnavailable: "Shared Plugins AD5X backend was not detected. The material manager is unavailable."
         moduleUnavailable: "The IFS module is missing or its contract is incompatible with the current Fluidd."

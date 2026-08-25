@@ -237,7 +237,6 @@ app:
         modeAuto: "Авто"
         modeHybrid: "Гибрид"
         modeExpert: "Эксперт"
-        zCalibration: "Калибровка Z"
         refresh: "Обновить"
         backendUnavailable: "Shared Plugins AD5X backend не обнаружен. Менеджер материалов недоступен."
         moduleUnavailable: "IFS module отсутствует или его контракт несовместим с текущим Fluidd."
