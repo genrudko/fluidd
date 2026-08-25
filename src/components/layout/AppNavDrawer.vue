@@ -94,7 +94,7 @@
           <app-nav-item
             v-if="supportsAd5x"
             icon="$ifs"
-            :to="ad5xEntryRoute"
+            to="ad5x-materials"
           >
             Plugins AD5X
           </app-nav-item>
@@ -159,7 +159,7 @@ import { Component, Mixins, VModel } from 'vue-property-decorator'
 
 import StateMixin from '@/mixins/state'
 import BrowserMixin from '@/mixins/browser'
-import { isAd5xBackendAvailable, isSharedAd5xBackendAvailable } from '@/ad5x/integration'
+import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 
 @Component({})
 export default class AppNavDrawer extends Mixins(StateMixin, BrowserMixin) {
@@ -175,15 +175,7 @@ export default class AppNavDrawer extends Mixins(StateMixin, BrowserMixin) {
   }
 
   get supportsAd5x (): boolean {
-    return isAd5xBackendAvailable(this.$typedGetters['server/componentSupport'])
-  }
-
-  get supportsSharedAd5x (): boolean {
     return isSharedAd5xBackendAvailable(this.$typedGetters['server/componentSupport'])
-  }
-
-  get ad5xEntryRoute (): string {
-    return this.supportsSharedAd5x ? 'ad5x-materials' : 'ad5x'
   }
 
   get enableDiagnostics (): boolean {

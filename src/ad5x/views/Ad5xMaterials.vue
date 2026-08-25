@@ -36,12 +36,7 @@
           {{ $t('app.ad5x.ifs.materials.modeExpert') }}
         </v-btn>
       </v-btn-toggle>
-      <v-btn
-        text
-        :to="{ name: 'ad5x' }"
-      >
-        {{ $t('app.ad5x.ifs.materials.zCalibration') }}
-      </v-btn>
+
       <v-btn
         outlined
         small
