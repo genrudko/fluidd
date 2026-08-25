@@ -33,6 +33,32 @@ export interface Ad5xZCalibrationMachineAnchor {
   offset_component?: boolean
 }
 
+export interface Ad5xZCalibrationThermal {
+  control_source: string
+  bed_target: number | null
+  extruder_target: number | null
+  first_layer_bed_temp: number | null
+  first_layer_extr_temp: number | null
+  filament_type?: string | readonly string[] | null
+  filament_name?: string | readonly string[] | null
+  metadata_available: boolean
+  bed_status: string
+  extruder_status: string
+}
+
+export interface Ad5xZCalibrationPurge {
+  selected_algorithm: string | null
+  selected_macro: string | null
+  effective_macro: string | null
+  reason: string
+  status: string
+  force_kamp: boolean
+  use_kamp: number
+  selected_macro_available: boolean
+  line_purge_available: boolean
+  selectable_algorithms: readonly string[]
+}
+
 export interface Ad5xZCalibrationState {
   calibration: {
     state: string
@@ -70,6 +96,9 @@ export interface Ad5xZCalibrationState {
     phase: string
     requested_slicer_z_offset: number | null
     slicer_z_offset_effect: string
+    filename?: string | null
+    thermal?: Ad5xZCalibrationThermal
+    purge?: Ad5xZCalibrationPurge
   }
   runtime: {
     klippy: string
@@ -159,6 +188,38 @@ function isNullableStringArray (value: unknown): value is string[] | null {
   return value === null || isStringArray(value)
 }
 
+function isNullableStringOrArray (value: unknown): value is string | readonly string[] | null {
+  return value === null || typeof value === 'string' || isStringArray(value)
+}
+
+function isAd5xZCalibrationThermal (value: unknown): value is Ad5xZCalibrationThermal {
+  return isRecord(value) &&
+    typeof value.control_source === 'string' &&
+    isNullableFiniteNumber(value.bed_target) &&
+    isNullableFiniteNumber(value.extruder_target) &&
+    isNullableFiniteNumber(value.first_layer_bed_temp) &&
+    isNullableFiniteNumber(value.first_layer_extr_temp) &&
+    (value.filament_type === undefined || isNullableStringOrArray(value.filament_type)) &&
+    (value.filament_name === undefined || isNullableStringOrArray(value.filament_name)) &&
+    typeof value.metadata_available === 'boolean' &&
+    typeof value.bed_status === 'string' &&
+    typeof value.extruder_status === 'string'
+}
+
+function isAd5xZCalibrationPurge (value: unknown): value is Ad5xZCalibrationPurge {
+  return isRecord(value) &&
+    (value.selected_algorithm === null || typeof value.selected_algorithm === 'string') &&
+    (value.selected_macro === null || typeof value.selected_macro === 'string') &&
+    (value.effective_macro === null || typeof value.effective_macro === 'string') &&
+    typeof value.reason === 'string' &&
+    typeof value.status === 'string' &&
+    typeof value.force_kamp === 'boolean' &&
+    isFiniteNumber(value.use_kamp) &&
+    typeof value.selected_macro_available === 'boolean' &&
+    typeof value.line_purge_available === 'boolean' &&
+    isStringArray(value.selectable_algorithms)
+}
+
 function isAd5xZCalibrationMachineAnchor (value: unknown): value is Ad5xZCalibrationMachineAnchor {
   if (!isRecord(value)) return false
   if (typeof value.model !== 'string' || value.model.length === 0) return false
@@ -203,6 +264,7 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
   const machineAnchor = value.state.machine_anchor
   const provenance = value.state.provenance
   const requiresMachineAnchor = value.capabilities.includes('transient_machine_anchor_provenance')
+  const requiresPurgePolicy = value.capabilities.includes('purge_policy_provenance')
   const job = value.state.job
   const runtime = value.state.runtime
   const safety = value.state.safety
@@ -249,7 +311,11 @@ export function isAd5xZCalibrationModule (value: unknown): value is Ad5xZCalibra
   if (!isRecord(job) ||
       typeof job.phase !== 'string' ||
       !isNullableFiniteNumber(job.requested_slicer_z_offset) ||
-      typeof job.slicer_z_offset_effect !== 'string') return false
+      typeof job.slicer_z_offset_effect !== 'string' ||
+      !(job.filename === undefined || job.filename === null || typeof job.filename === 'string') ||
+      !(job.thermal === undefined || isAd5xZCalibrationThermal(job.thermal)) ||
+      !(job.purge === undefined || isAd5xZCalibrationPurge(job.purge)) ||
+      (requiresPurgePolicy && !isAd5xZCalibrationPurge(job.purge))) return false
 
   if (!isRecord(runtime) ||
       typeof runtime.klippy !== 'string' ||

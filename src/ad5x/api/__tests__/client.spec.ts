@@ -141,6 +141,50 @@ function zV6Snapshot () {
   }
 }
 
+function zV13Snapshot () {
+  const base = zV6Snapshot()
+  return {
+    ...base,
+    module_version: '0.1.6',
+    module: {
+      ...base.module,
+      schema_version: '1.3',
+      capabilities: [...base.module.capabilities, 'job_thermal_provenance', 'purge_policy_provenance'],
+      state: {
+        ...base.module.state,
+        job: {
+          ...base.module.state.job,
+          filename: 'part.gcode',
+          thermal: {
+            control_source: 'zmod_start_print',
+            bed_target: 75,
+            extruder_target: 240,
+            first_layer_bed_temp: 75,
+            first_layer_extr_temp: 240,
+            filament_type: 'PETG',
+            filament_name: 'PETG Black',
+            metadata_available: true,
+            bed_status: 'matched',
+            extruder_status: 'matched'
+          },
+          purge: {
+            selected_algorithm: 'ff',
+            selected_macro: '_CLEAR2',
+            effective_macro: '_CLEAR2',
+            reason: 'selected',
+            status: 'ready',
+            force_kamp: false,
+            use_kamp: 0,
+            selected_macro_available: true,
+            line_purge_available: true,
+            selectable_algorithms: ['orca', 'ff', 'ff2', 'schreider', 'line']
+          }
+        }
+      }
+    }
+  }
+}
+
 describe('Ad5xApiClient', () => {
   it('resolves the Fluidd runtime socket without relying on Vue type augmentation', () => {
     const emit = vi.fn()
@@ -489,6 +533,30 @@ describe('Ad5xApiClient', () => {
       emit: vi.fn().mockResolvedValue(payload)
     })
 
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
+    )
+  })
+
+  it('accepts schema 1.3 with thermal and purge policy provenance', async () => {
+    const payload = zV13Snapshot()
+    const client = new Ad5xApiClient({ emit: vi.fn().mockResolvedValue(payload) })
+    await expect(client.getZCalibrationSnapshot()).resolves.toEqual(payload)
+  })
+
+  it('rejects purge capability when the purge state is missing', async () => {
+    const payload = zV13Snapshot()
+    delete (payload.module.state.job as { purge?: unknown }).purge
+    const client = new Ad5xApiClient({ emit: vi.fn().mockResolvedValue(payload) })
+    await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
+      'Z Calibration snapshot response is incompatible with API 1.0'
+    )
+  })
+
+  it('rejects malformed purge policy provenance', async () => {
+    const payload = zV13Snapshot()
+    payload.module.state.job.purge.selected_macro_available = 'yes' as unknown as boolean
+    const client = new Ad5xApiClient({ emit: vi.fn().mockResolvedValue(payload) })
     await expect(client.getZCalibrationSnapshot()).rejects.toThrow(
       'Z Calibration snapshot response is incompatible with API 1.0'
     )
