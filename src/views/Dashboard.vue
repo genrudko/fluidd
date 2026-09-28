@@ -56,6 +56,8 @@ import RunoutSensorsCard from '@/components/widgets/runout-sensors/RunoutSensors
 import BeaconCard from '@/components/widgets/beacon/BeaconCard.vue'
 import AfcCard from '@/components/widgets/afc/AfcCard.vue'
 import Ad5xCalibrationDashboardCard from '@/ad5x/components/Ad5xCalibrationDashboardCard.vue'
+import Ad5xIfsDashboardCard from '@/ad5x/components/Ad5xIfsDashboardCard.vue'
+import { isSharedAd5xBackendAvailable } from '@/ad5x/integration'
 import type Sortable from 'sortablejs'
 
 @Component({
@@ -79,7 +81,8 @@ import type Sortable from 'sortablejs'
     RunoutSensorsCard,
     BeaconCard,
     AfcCard,
-    Ad5xCalibrationDashboardCard
+    Ad5xCalibrationDashboardCard,
+    Ad5xIfsDashboardCard
   }
 })
 export default class Dashboard extends Mixins(StateMixin) {
@@ -158,6 +161,10 @@ export default class Dashboard extends Mixins(StateMixin) {
 
   get supportsAd5xZCalibration (): boolean {
     return this.$typedGetters['server/componentSupport']('plugins_ad5x_zcal')
+  }
+
+  get supportsAd5xIfs (): boolean {
+    return isSharedAd5xBackendAvailable(this.$typedGetters['server/componentSupport'])
   }
 
   get hasMacros (): boolean {
@@ -244,6 +251,7 @@ export default class Dashboard extends Mixins(StateMixin) {
     if (item.id === 'temperature-card' && !this.hasHeatersOrTemperatureSensors) return true
     if (item.id === 'afc-card' && !this.supportsAfc) return true
     if (item.id === 'ad5x-calibration-dashboard-card' && !this.supportsAd5xZCalibration) return true
+    if (item.id === 'ad5x-ifs-dashboard-card' && !this.supportsAd5xIfs) return true
 
     // Otherwise return the opposite of whatever the enabled state is.
     return !item.enabled

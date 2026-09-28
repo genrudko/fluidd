@@ -16,6 +16,7 @@ export const defaultState = (): LayoutState => {
         container1: [
           { id: 'printer-status-card', enabled: true, collapsed: false },
           { id: 'ad5x-calibration-dashboard-card', enabled: true, collapsed: false },
+          { id: 'ad5x-ifs-dashboard-card', enabled: true, collapsed: false },
           { id: 'spoolman-card', enabled: true, collapsed: false },
           { id: 'mmu-card', enabled: true, collapsed: false },
           { id: 'camera-card', enabled: true, collapsed: false },
